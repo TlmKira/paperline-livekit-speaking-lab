@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { getAiEngineUrlForRequest } from "@/lib/runtime/request-runtime";
 import {
-  generateJustSpeakFeedbackWithGemini,
-  isJustSpeakGeminiConfigured,
-} from "@/lib/just-speak-gemini";
+  generateJustSpeakFeedbackWithAliyun,
+  isAliyunAiConfigured,
+} from "@/lib/aliyun-ai";
+import {
+  AliyunSpeechError,
+  transcribeWithAliyunOmni,
+} from "@/lib/aliyun-speech";
 
 export const runtime = "nodejs";
 
@@ -19,7 +22,6 @@ function pickTranscript(payload: TranscribePayload | null): string {
 }
 
 export async function POST(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
   const formData = await request.formData();
   const audio = formData.get("audio");
 
@@ -27,32 +29,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "An audio file is required." }, { status: 400 });
   }
 
-  const transcribeFormData = new FormData();
-  transcribeFormData.set("audio", audio, audio.name || "attempt.wav");
-
   try {
-    const transcribeRes = await fetch(`${engineUrl}/transcribe`, {
-      method: "POST",
-      body: transcribeFormData,
-      cache: "no-store",
-    });
-
-    const transcribeJson = (await transcribeRes.json().catch(() => null)) as
-      | TranscribePayload
-      | null;
-
-    if (!transcribeRes.ok) {
-      const message =
-        transcribeJson && typeof transcribeJson === "object" && "detail" in transcribeJson
-          ? String((transcribeJson as { detail?: unknown }).detail)
-          : "FastAPI transcription failed.";
-      return NextResponse.json({ error: message }, { status: transcribeRes.status });
-    }
-
+    const transcribeJson = (await transcribeWithAliyunOmni(audio)) as TranscribePayload;
     const whisperTranscript = pickTranscript(transcribeJson);
 
-    const feedback = isJustSpeakGeminiConfigured()
-      ? await generateJustSpeakFeedbackWithGemini({
+    const feedback = isAliyunAiConfigured()
+      ? await generateJustSpeakFeedbackWithAliyun({
           whisperTranscript,
           overallScore: null,
           engineTranscript: null,
@@ -64,11 +46,17 @@ export async function POST(request: Request) {
       whisperTranscript,
       feedback,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AliyunSpeechError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json(
       {
         error:
-          "Just Speak is offline. Make sure the local ai-engine service is healthy, then try again.",
+          error instanceof Error
+            ? error.message
+            : "Just Speak is offline. Check the Aliyun DashScope configuration, then try again.",
       },
       { status: 503 },
     );

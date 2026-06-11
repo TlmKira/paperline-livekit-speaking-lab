@@ -10,10 +10,10 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const status = getAliyunSpeechStatus();
-  const ready = false;
-  const loadError = status.assessmentConfigured
-    ? "Aliyun speech assessment credentials are configured, but the server-side en.sent.score transport is not wired yet."
-    : "Aliyun speech assessment is not configured. Set ALIYUN_SPEECH_ASSESS_APPKEY, ALIYUN_SPEECH_ASSESS_ACCESS_KEY_ID, and ALIYUN_SPEECH_ASSESS_ACCESS_KEY_SECRET.";
+  const ready = status.dashscopeReady;
+  const loadError = status.dashscopeReady
+    ? null
+    : "DASHSCOPE_API_KEY is not configured.";
 
   return NextResponse.json(
     {
@@ -28,15 +28,18 @@ export async function GET() {
       diagnostics: {
         provider: "aliyun",
         asrModel: status.asrModel,
+        assessmentModel: status.assessmentModel,
         ttsModel: status.ttsModel,
         ttsVoice: status.ttsVoice,
-        assessment: "en.sent.score",
+        assessment: status.assessmentConfigured
+          ? "en.sent.score web sdk configured"
+          : "dashscope cloud assessment",
       },
       needsRestartHint: false,
       loadError,
       message: ready
         ? "Aliyun speech providers are configured."
-        : "Aliyun speech assessment is not ready. ASR and TTS use Aliyun directly; pronunciation scoring still needs the en.sent.score SDK transport.",
+        : "Aliyun speech providers are not ready. Set DASHSCOPE_API_KEY.",
     },
     { status: ready ? 200 : 202 },
   );

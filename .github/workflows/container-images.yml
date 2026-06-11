@@ -25,12 +25,6 @@ jobs:
           - service: web
             context: .
             dockerfile: Dockerfile
-          - service: ai-engine
-            context: src/backend/ai-engine
-            dockerfile: src/backend/ai-engine/Dockerfile
-          - service: coach-engine
-            context: src/backend/coach-engine
-            dockerfile: src/backend/coach-engine/Dockerfile
 
     steps:
       - name: Check out source

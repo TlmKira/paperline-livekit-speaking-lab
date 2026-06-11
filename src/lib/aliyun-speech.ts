@@ -2,6 +2,7 @@
 import type {
   PronunciationAssessment,
   PronunciationHighlight,
+  PronunciationPhoneme,
   PronunciationStatus,
 } from "@/lib/pronunciation";
 
@@ -48,6 +49,14 @@ function getTtsModel() {
 
 function getTtsVoice() {
   return process.env.ALIYUN_TTS_VOICE?.trim() || "loongabby_v3";
+}
+
+function getAssessmentModel() {
+  return (
+    process.env.ALIYUN_ASSESSMENT_MODEL?.trim() ||
+    process.env.ALIYUN_ASR_MODEL?.trim() ||
+    "qwen3.5-omni-flash"
+  );
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -129,6 +138,29 @@ function cleanTranscript(raw: string) {
     .trim();
 }
 
+function parseJsonObject(raw: string) {
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    const parsed = JSON.parse(cleaned) as unknown;
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    try {
+      const parsed = JSON.parse(cleaned.slice(start, end + 1)) as unknown;
+      return isRecord(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function inferAudioFormat(file: File) {
   const mimeType = file.type.toLowerCase();
   const name = file.name.toLowerCase();
@@ -162,6 +194,7 @@ export function getAliyunSpeechStatus() {
     dashscopeReady,
     assessmentConfigured,
     asrModel: getAsrModel(),
+    assessmentModel: getAssessmentModel(),
     ttsModel: getTtsModel(),
     ttsVoice: getTtsVoice(),
   };
@@ -260,50 +293,200 @@ function scoreToStatus(score: number): PronunciationStatus {
   return "needs-work";
 }
 
-function makeFallbackAssessment(targetText: string): PronunciationAssessment {
+function clampScore(value: unknown, fallback = 0) {
+  const score =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : fallback;
+  if (!Number.isFinite(score)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function normalizeWords(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function wordSimilarity(targetText: string, transcript: string) {
+  const targetWords = normalizeWords(targetText);
+  const heardWords = new Set(normalizeWords(transcript));
+  if (!targetWords.length) return 0;
+  const matched = targetWords.filter((word) => heardWords.has(word)).length;
+  return matched / targetWords.length;
+}
+
+function makeFallbackAssessment(
+  targetText: string,
+  transcript = "",
+  summary = "Aliyun cloud assessment returned a partial result.",
+): PronunciationAssessment {
+  const similarity = wordSimilarity(targetText, transcript);
+  const overallScore = transcript ? clampScore(45 + similarity * 50, 45) : 0;
   const words = targetText.split(/\s+/).filter(Boolean);
   const highlights: PronunciationHighlight[] = words.map((word) => ({
     text: word,
-    status: "mixed",
-    feedback: "Pronunciation details are waiting for Aliyun speech assessment.",
+    status: scoreToStatus(overallScore),
+    feedback:
+      overallScore >= 80
+        ? "This word was clear in the cloud transcript."
+        : overallScore >= 55
+          ? "Close. Try a slower, clearer take."
+          : "The cloud transcript did not clearly match this target.",
   }));
 
   return {
     targetText,
     ipaTarget: "",
-    transcript: "",
-    overallScore: 0,
-    summary: "Aliyun speech assessment is not connected yet.",
-    nextStep: "Configure the speech assessment SDK/API before using scoring.",
-    engine: "aliyun-en.sent.score",
+    transcript,
+    overallScore,
+    summary,
+    nextStep:
+      overallScore >= 80
+        ? "Move on or repeat once for consistency."
+        : "Listen to the target, then record one slower take.",
+    engine: "aliyun-cloud-assessment",
     highlights,
     phonemes: [],
   };
 }
 
-export async function assessPronunciationWithAliyun(
-  _audio: File,
-  targetText: string,
-): Promise<PronunciationAssessment> {
-  const status = getAliyunSpeechStatus();
+function normalizeStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+}
 
-  if (!status.assessmentConfigured) {
-    throw new AliyunSpeechError(
-      "Aliyun speech assessment is not configured. Set ALIYUN_SPEECH_ASSESS_APPKEY and ALIYUN_SPEECH_ASSESS_ACCESS_KEY_SECRET.",
-      503,
+function mapAssessmentJson(
+  raw: JsonRecord,
+  targetText: string,
+  fallbackTranscript: string,
+): PronunciationAssessment {
+  const transcript = String(raw.transcript ?? raw.text ?? fallbackTranscript).trim();
+  const overallScore = clampScore(raw.overallScore ?? raw.score, 0);
+  const rawHighlights = Array.isArray(raw.highlights) ? raw.highlights : [];
+
+  const highlights: PronunciationHighlight[] = rawHighlights
+    .map((item) => {
+      if (!isRecord(item)) return null;
+      const text = String(item.text ?? item.word ?? "").trim();
+      if (!text) return null;
+      const score = clampScore(item.score ?? item.accuracy, overallScore);
+      return {
+        text,
+        status: scoreToStatus(score),
+        feedback:
+          String(item.feedback ?? "").trim() ||
+          (score >= 80
+            ? "Clear pronunciation."
+            : score >= 55
+              ? "Close. Try one slower take."
+              : "Needs another pass."),
+      } satisfies PronunciationHighlight;
+    })
+    .filter((item): item is PronunciationHighlight => Boolean(item));
+
+  const phonemes: PronunciationPhoneme[] = normalizeStringArray(raw.phonemes).map(
+    (symbol) => ({
+      symbol,
+      expected: symbol,
+      heard: symbol,
+      accuracy: overallScore,
+      status: scoreToStatus(overallScore),
+    }),
+  );
+
+  if (!overallScore || !highlights.length) {
+    return makeFallbackAssessment(
+      targetText,
+      transcript,
+      String(raw.summary ?? "").trim() ||
+        "Aliyun cloud assessment returned a transcript but not full scoring details.",
     );
   }
 
-  // Aliyun's English sentence assessment docs describe the en.sent.score request
-  // payload and result fields, while the production scoring transport is SDK/
-  // warrant based. Keep the route explicit until that SDK bridge is added.
-  const assessment = makeFallbackAssessment(targetText);
-  assessment.summary =
-    "Aliyun speech assessment credentials are configured, but the server-side en.sent.score transport is not wired yet.";
-  assessment.nextStep =
-    "Add the Aliyun speech assessment SDK bridge, then map result.overall, word details, and phone details here.";
+  return {
+    targetText,
+    ipaTarget: "",
+    transcript,
+    overallScore,
+    summary:
+      String(raw.summary ?? "").trim() ||
+      (overallScore >= 80
+        ? "Good take. The target was clear."
+        : overallScore >= 55
+          ? "Close take. Slow down and keep the ending sounds clear."
+          : "Try again. Say the target once, a little slower."),
+    nextStep:
+      String(raw.nextStep ?? "").trim() ||
+      (overallScore >= 80
+        ? "Move to another target or repeat once for consistency."
+        : "Listen to the target, then record one slower take."),
+    engine: "aliyun-cloud-assessment",
+    highlights,
+    phonemes,
+  };
+}
 
-  throw new AliyunSpeechError(assessment.summary, 501);
+export async function assessPronunciationWithAliyun(
+  audio: File,
+  targetText: string,
+): Promise<PronunciationAssessment> {
+  const model = getAssessmentModel();
+  const dataUrl = await fileToDataUrl(audio);
+  const format = inferAudioFormat(audio);
+
+  const payload = await dashscopeJson(OMNI_CHAT_ENDPOINT, {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "You are a pronunciation assessment engine for English learners.",
+          "Assess the user's audio against the provided target text.",
+          "Return JSON only. Do not include markdown.",
+          "Shape: {\"transcript\": string, \"overallScore\": number, \"summary\": string, \"nextStep\": string, \"highlights\": [{\"text\": string, \"score\": number, \"feedback\": string}], \"phonemes\": string[]}.",
+          "Use a 0-100 score. highlights should cover the target words.",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Target text: ${targetText}`,
+          },
+          {
+            type: "input_audio",
+            input_audio: {
+              data: dataUrl,
+              format,
+            },
+          },
+        ],
+      },
+    ],
+    stream: false,
+    temperature: 0,
+    max_tokens: 700,
+  });
+
+  const rawContent = extractMessageContent(payload);
+  const parsed = parseJsonObject(rawContent);
+  if (parsed) {
+    return mapAssessmentJson(parsed, targetText, "");
+  }
+
+  const transcript = cleanTranscript(rawContent);
+  return makeFallbackAssessment(
+    targetText,
+    transcript,
+    "Aliyun cloud assessment returned a transcript but not structured scoring details.",
+  );
 }
 
 export { AliyunSpeechError, scoreToStatus };

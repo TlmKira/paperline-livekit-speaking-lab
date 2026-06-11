@@ -1,22 +1,20 @@
 // FILE: src/app/api/ai-coach/route.ts
 import { NextResponse } from "next/server";
-import { getAppSession } from "@/lib/app-session";
 import {
-  generateCoachTurnWithGemini,
-  isGeminiCoachConfigured,
-} from "@/lib/ai-coach-gemini";
+  AliyunAiError,
+  generateCoachTurnWithAliyun,
+  isAliyunAiConfigured,
+} from "@/lib/aliyun-ai";
 import type { AiCoachRequestPayload } from "@/lib/ai-coach";
 import { getCoachEngineUrlForRequest } from "@/lib/runtime/request-runtime";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const session = await getAppSession();
-
-  if (session.mode === "cloud" && isGeminiCoachConfigured()) {
+  if (isAliyunAiConfigured()) {
     return NextResponse.json({
       ready: true,
-      message: "AI Coach (Gemini) is ready.",
+      message: "AI Coach (Aliyun) is ready.",
     });
   }
 
@@ -56,7 +54,7 @@ export async function GET(request: Request) {
       {
         ready: false,
         message:
-          "AI Coach is offline. For cloud, set GEMINI_API_KEY; for local, start the coach-engine service.",
+          "AI Coach is offline. Set DASHSCOPE_API_KEY for Aliyun cloud AI, or start the coach-engine service.",
       },
       { status: 503 },
     );
@@ -64,7 +62,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getAppSession();
   const raw = await request.json().catch(() => null);
 
   if (!raw || typeof raw !== "object") {
@@ -89,29 +86,23 @@ export async function POST(request: Request) {
     history: Array.isArray(body.history) ? body.history : [],
   };
 
-  if (session.mode === "cloud") {
-    if (!session.user) {
+  if (isAliyunAiConfigured()) {
+    try {
+      const turn = await generateCoachTurnWithAliyun(payload);
       return NextResponse.json(
-        { error: "Sign in to use AI Coach in cloud mode." },
-        { status: 401 },
+        {
+          turn,
+          provider: "aliyun",
+        },
+        { status: 200 },
       );
-    }
-
-    if (isGeminiCoachConfigured()) {
-      try {
-        const turn = await generateCoachTurnWithGemini(payload);
-        return NextResponse.json(
-          {
-            turn,
-            provider: "gemini",
-          },
-          { status: 200 },
-        );
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Gemini generation failed.";
-        return NextResponse.json({ error: message }, { status: 502 });
-      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Aliyun coach generation failed.";
+      return NextResponse.json(
+        { error: message },
+        { status: err instanceof AliyunAiError ? err.status : 502 },
+      );
     }
   }
 
@@ -157,7 +148,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "AI Coach is offline. Start the coach-engine service or use cloud with GEMINI_API_KEY.",
+          "AI Coach is offline. Set DASHSCOPE_API_KEY for Aliyun cloud AI, or start the coach-engine service.",
       },
       { status: 503 },
     );
