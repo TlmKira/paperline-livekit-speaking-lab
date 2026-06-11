@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -10,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/models/huggingface \
     TRANSFORMERS_CACHE=/models/huggingface
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=5 update && \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
     build-essential \
     git \
     libgl1 \
@@ -19,8 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt ./
 
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+RUN pip install --retries 10 --timeout 120 --upgrade pip setuptools wheel && \
+    pip install --retries 10 --timeout 120 -r requirements.txt
 
 COPY main.py coach_llm.py model.py parsing.py prompts.py validation.py ./
 

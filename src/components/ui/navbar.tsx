@@ -2,8 +2,10 @@
 import Link from "next/link";
 import { Download, Settings } from "griddy-icons";
 import { BrandMark } from "@/components/ui/brand-mark";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { NavbarFrame } from "@/components/ui/navbar-frame";
 import { getAppSession } from "@/lib/app-session";
+import { getI18n } from "@/lib/i18n/server";
 import { getRequestRuntime } from "@/lib/runtime/request-runtime";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +31,7 @@ const navBaseClass =
 export async function Navbar({ current, variant = "default" }: NavbarProps) {
   const session = await getAppSession();
   const runtime = await getRequestRuntime();
+  const { dictionary } = await getI18n();
   const isAuthenticated = Boolean(session.user);
   const logoHref = isAuthenticated ? "/dashboard" : "/";
 
@@ -37,25 +40,25 @@ export async function Navbar({ current, variant = "default" }: NavbarProps) {
         {
           href: "/dashboard",
           key: "home" as const,
-          label: "Home",
+          label: dictionary.nav.home,
           locked: false,
         },
         {
           href: "/learn",
           key: "learn" as const,
-          label: "Modules",
+          label: dictionary.nav.modules,
           locked: false,
         },
         {
           href: "/conversation",
           key: "conversation" as const,
-          label: "Conversation",
+          label: dictionary.nav.conversation,
           locked: false,
         },
         {
           href: "/coach",
           key: "coach" as const,
-          label: "AI Coach",
+          label: dictionary.nav.aiCoach,
           locked: false,
         },
       ]
@@ -63,13 +66,13 @@ export async function Navbar({ current, variant = "default" }: NavbarProps) {
         {
           href: "/login",
           key: "login" as const,
-          label: "Login",
+          label: dictionary.nav.login,
           locked: false,
         },
         {
           href: "/signup",
           key: "signup" as const,
-          label: "Sign up",
+          label: dictionary.nav.signup,
           locked: false,
         },
       ];
@@ -97,6 +100,8 @@ export async function Navbar({ current, variant = "default" }: NavbarProps) {
       </Link>
 
       <div className="flex flex-nowrap items-center gap-2 overflow-x-auto self-center">
+        <LanguageSwitcher variant={isDark ? "dark" : "default"} />
+
         {navItems.map((item) => (
           <Link
             key={item.key}
@@ -124,10 +129,10 @@ export async function Navbar({ current, variant = "default" }: NavbarProps) {
                 ? activeClass
                 : inactiveClass,
             )}
-            aria-label="Download desktop app"
+            aria-label={dictionary.nav.downloadDesktop}
           >
             <Download size={15} color="currentColor" />
-            Download
+            {dictionary.nav.download}
           </Link>
         )}
 
@@ -141,7 +146,7 @@ export async function Navbar({ current, variant = "default" }: NavbarProps) {
                 ? activeClass
                 : inactiveClass,
             )}
-            aria-label="Profile & settings"
+            aria-label={dictionary.nav.profileSettings}
           >
             <Settings size={18} color="currentColor" />
           </Link>

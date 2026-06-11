@@ -37,6 +37,7 @@
   --font-display: var(--font-funnel-display);
   --font-sans: var(--font-funnel-display);
   --font-kicker: var(--font-sour-gummy);
+  --font-zh-body: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 }
 
 * {
@@ -53,6 +54,10 @@ body {
   background-color: var(--vanilla-cream);
   color: var(--hunter-green);
   line-height: 1.42;
+}
+
+html[data-locale="zh"] body {
+  font-family: var(--font-funnel-display), var(--font-zh-body);
 }
 
 button,
@@ -92,6 +97,14 @@ select {
     font-variation-settings: "wdth" 100;
     line-height: 1.16;
   }
+
+  html[data-locale="zh"] h1,
+  html[data-locale="zh"] h2,
+  html[data-locale="zh"] h3 {
+    font-family: var(--font-zh-kicker), var(--font-zh-body);
+    font-weight: 400;
+    line-height: 1.22;
+  }
 }
 
 @layer utilities {
@@ -104,6 +117,12 @@ select {
     line-height: 1.16;
   }
 
+  html[data-locale="zh"] .font-kicker {
+    font-family: var(--font-zh-kicker), var(--font-zh-body);
+    font-weight: 400;
+    line-height: 1.22;
+  }
+
   .eyebrow {
     font-family: var(--font-kicker), sans-serif;
     font-optical-sizing: auto;
@@ -113,6 +132,13 @@ select {
     line-height: 1.1;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+  }
+
+  html[data-locale="zh"] .eyebrow {
+    font-family: var(--font-zh-kicker), var(--font-zh-body);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
 
   .leading-8 {

@@ -1,11 +1,13 @@
 // FILE: src/app/api/reference-audio/route.ts
 import { NextResponse } from "next/server";
-import { getAiEngineUrlForRequest } from "@/lib/runtime/request-runtime";
+import {
+  AliyunSpeechError,
+  synthesizeReferenceAudio,
+} from "@/lib/aliyun-speech";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
   const { searchParams } = new URL(request.url);
   const text = searchParams.get("text")?.trim();
   const instruct = searchParams.get("instruct")?.trim();
@@ -18,42 +20,22 @@ export async function GET(request: Request) {
   }
 
   try {
-    const upstreamUrl = new URL(`${engineUrl}/reference-audio`);
-    upstreamUrl.searchParams.set("text", text);
-    if (instruct) {
-      upstreamUrl.searchParams.set("instruct", instruct);
-    }
+    const { audio, contentType } = await synthesizeReferenceAudio(text, instruct);
 
-    const response = await fetch(upstreamUrl, {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as
-        | { detail?: string }
-        | null;
-
-      return NextResponse.json(
-        {
-          error: payload?.detail ?? "Reference pronunciation generation failed.",
-        },
-        { status: response.status },
-      );
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-
-    return new Response(arrayBuffer, {
+    return new Response(audio, {
       headers: {
-        "Content-Type": response.headers.get("content-type") ?? "audio/wav",
+        "Content-Type": contentType,
         "Cache-Control": "no-store",
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AliyunSpeechError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json(
       {
-        error:
-          "Reference pronunciation is unavailable. Make sure the local ai-engine service is healthy, then try again.",
+        error: "Reference pronunciation is unavailable. Check the Aliyun TTS configuration.",
       },
       { status: 503 },
     );
@@ -61,7 +43,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
   const payload = (await request.json().catch(() => null)) as
     | { text?: string; instruct?: string }
     | null;
@@ -76,44 +57,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const formData = new FormData();
-    formData.set("text", text);
-    if (instruct) {
-      formData.set("instruct", instruct);
-    }
+    const { audio, contentType } = await synthesizeReferenceAudio(text, instruct);
 
-    const response = await fetch(`${engineUrl}/reference-audio`, {
-      method: "POST",
-      body: formData,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const errorPayload = (await response.json().catch(() => null)) as
-        | { detail?: string }
-        | null;
-
-      return NextResponse.json(
-        {
-          error: errorPayload?.detail ?? "Reference pronunciation generation failed.",
-        },
-        { status: response.status },
-      );
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-
-    return new Response(arrayBuffer, {
+    return new Response(audio, {
       headers: {
-        "Content-Type": response.headers.get("content-type") ?? "audio/wav",
+        "Content-Type": contentType,
         "Cache-Control": "no-store",
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AliyunSpeechError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json(
       {
-        error:
-          "Reference pronunciation is unavailable. Make sure the local ai-engine service is healthy, then try again.",
+        error: "Reference pronunciation is unavailable. Check the Aliyun TTS configuration.",
       },
       { status: 503 },
     );

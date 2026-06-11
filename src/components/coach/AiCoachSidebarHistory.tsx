@@ -9,16 +9,17 @@ import {
   getAiCoachStorageKey,
   readSavedAiCoachSessions,
 } from '@/lib/ai-coach-storage'
+import { useI18n } from '@/lib/i18n/client'
 import { cn } from '@/lib/utils'
 
-function formatTimestamp(value: string) {
+function formatTimestamp(value: string, locale: string, fallback: string) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return 'Recently updated'
+    return fallback
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
     month: 'short',
     day: 'numeric',
   }).format(date)
@@ -27,6 +28,7 @@ function formatTimestamp(value: string) {
 export function AiCoachSidebarHistory({ userId }: { userId: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { locale, t } = useI18n()
   const [sessions, setSessions] = useState<SavedAiCoachSession[]>([])
   const [isExpanded, setIsExpanded] = useState(true)
 
@@ -78,7 +80,7 @@ export function AiCoachSidebarHistory({ userId }: { userId: string }) {
         onClick={() => setIsExpanded((previous) => !previous)}
         className="flex w-full items-center justify-between gap-3 rounded-full px-3 py-2 text-left transition-colors hover:bg-vanilla-cream"
       >
-        <p className="text-base font-semibold text-hunter-green">Coach history</p>
+        <p className="text-base font-semibold text-hunter-green">{t('nav.coachHistory')}</p>
         <div className="flex items-center gap-2">
           <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-vanilla-cream px-2 py-1 text-sm font-semibold text-hunter-green">
             {sessions.length}
@@ -109,7 +111,7 @@ export function AiCoachSidebarHistory({ userId }: { userId: string }) {
                 >
                   <p className="truncate text-base font-semibold">{session.topic}</p>
                   <p className="text-sm text-iron-grey">
-                    {session.turns.length} turns · {formatTimestamp(session.updatedAt)}
+                    {session.turns.length} {t('coach.turns')} · {formatTimestamp(session.updatedAt, locale, t('coach.recentlyUpdated'))}
                   </p>
                 </Link>
               )
@@ -117,7 +119,7 @@ export function AiCoachSidebarHistory({ userId }: { userId: string }) {
           </div>
         ) : (
           <p className="mt-2 px-3 text-base text-iron-grey">
-            No saved conversations yet.
+            {t('coach.noSavedConversations')}
           </p>
         )
       ) : null}

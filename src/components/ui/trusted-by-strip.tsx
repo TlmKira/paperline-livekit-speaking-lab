@@ -1,6 +1,7 @@
 // FILE: src/components/ui/trusted-by-strip.tsx
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
+import { getI18n } from "@/lib/i18n/server";
 
 const trustedBrands = [
   { name: "OpenAI", domain: "openai.com", frameClassName: "w-[7.2rem] sm:w-[7.6rem]" },
@@ -19,7 +20,8 @@ function buildBrandfetchLogoUrl(domain: string, clientId: string) {
   return `https://cdn.brandfetch.io/domain/${domain}/w/220/h/72/theme/dark/fallback/transparent/type/logo?c=${clientId}`;
 }
 
-export function TrustedByStrip() {
+export async function TrustedByStrip() {
+  const { dictionary } = await getI18n();
   const clientId = process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID;
 
   if (!clientId) {
@@ -31,7 +33,7 @@ export function TrustedByStrip() {
       <Card className="bg-vanilla-cream p-4 sm:p-5 lg:px-6 lg:py-6">
         <div className="grid gap-3">
           <div className="text-center">
-            <p className="eyebrow text-sm text-sage-green">Trusted by</p>
+            <p className="eyebrow text-sm text-sage-green">{dictionary.trusted.eyebrow}</p>
           </div>
 
           <div className="relative overflow-hidden py-3 sm:py-4">

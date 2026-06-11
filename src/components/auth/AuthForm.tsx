@@ -8,6 +8,7 @@ import { startTransition, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n/client";
 import {
   createSupabaseBrowserClient,
   isSupabaseConfigured,
@@ -22,6 +23,7 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, runtime }: AuthFormProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const isLogin = mode === "login";
   const isDesktop = runtime === "desktop";
   const [email, setEmail] = useState("");
@@ -40,7 +42,7 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
 
       if (!isSupabaseConfigured) {
         throw new Error(
-          "Add your Supabase URL and publishable key in .env.local before testing authentication.",
+          t("auth.supabaseMissing"),
         );
       }
 
@@ -56,7 +58,7 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
           throw authError;
         }
 
-        setMessage("Login successful. Taking you to the dashboard.");
+        setMessage(t("auth.loginSuccess"));
         startTransition(() => {
           router.replace("/dashboard");
           router.refresh();
@@ -80,13 +82,13 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
       }
 
       setMessage(
-        "Account created. Check your inbox for the Supabase confirmation email, then sign in.",
+        t("auth.signupSuccess"),
       );
     } catch (nextError) {
       setError(
         nextError instanceof Error
           ? nextError.message
-          : "Something went wrong during authentication.",
+          : t("auth.authFailed"),
       );
     } finally {
       setIsSubmitting(false);
@@ -98,10 +100,10 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
       <Card className="w-full max-w-[30rem] bg-transparent p-0 backdrop-blur-0">
         <div className="space-y-6">
           <div className="space-y-4 px-5 sm:px-6">
-            <Link href="/" className="inline-flex w-fit items-center" aria-label="Go to home">
+            <Link href="/" className="inline-flex w-fit items-center" aria-label={t("auth.goHome")}>
               <Image
                 src="/logo/logo-green-white.svg"
-                alt="Cadence logo"
+                alt={t("auth.logoAlt")}
                 width={136}
                 height={30}
                 className="h-[30px] w-auto object-contain"
@@ -111,12 +113,12 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
 
             <div className="space-y-3">
               <CardTitle className="text-[2rem] leading-tight sm:text-[2.15rem]">
-                {isLogin ? "Sign in to Cadence" : "Start your pronunciation profile"}
+                {isLogin ? t("auth.loginTitle") : t("auth.signupTitle")}
               </CardTitle>
               <CardDescription className="text-base">
                 {isLogin
-                  ? "Return to your saved rounds and next coaching cue."
-                  : "Create your learner account and begin tracking progress."}
+                  ? t("auth.loginDescription")
+                  : t("auth.signupDescription")}
               </CardDescription>
             </div>
           </div>
@@ -126,7 +128,7 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
             onSubmit={handleSubmit}
           >
             <label className="block">
-              <span className="block pb-2 text-sm font-medium text-hunter-green">Email</span>
+              <span className="block pb-2 text-sm font-medium text-hunter-green">{t("auth.email")}</span>
               <Input
                 type="email"
                 autoComplete="email"
@@ -139,11 +141,11 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
             </label>
 
             <label className="block">
-              <span className="block pb-2 text-sm font-medium text-hunter-green">Password</span>
+              <span className="block pb-2 text-sm font-medium text-hunter-green">{t("auth.password")}</span>
               <Input
                 type="password"
                 autoComplete={isLogin ? "current-password" : "new-password"}
-                placeholder="At least 6 characters"
+                placeholder={t("auth.passwordPlaceholder")}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -167,29 +169,29 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
             <Button className="w-full" type="submit" disabled={isSubmitting}>
               {isSubmitting
                 ? isLogin
-                  ? "Signing in..."
-                  : "Creating account..."
+                  ? t("auth.signingIn")
+                  : t("auth.creatingAccount")
                 : isLogin
-                  ? "Sign in"
-                  : "Create account"}
+                  ? t("auth.signIn")
+                  : t("auth.createAccount")}
             </Button>
 
             {isLogin ? (
               <div className="pt-1 text-right">
                 <Link href="/forgot-password" className="text-sm font-semibold text-sage-green">
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
             ) : null}
           </form>
 
           <p className="px-5 text-sm leading-7 text-iron-grey sm:px-6">
-            {isLogin ? "Need an account?" : "Already have an account?"}{" "}
+            {isLogin ? t("auth.needAccount") : t("auth.alreadyHaveAccount")}{" "}
             <Link
               href={isLogin ? "/signup" : "/login"}
               className="font-semibold text-sage-green"
             >
-              {isLogin ? "Create one here." : "Sign in here."}
+              {isLogin ? t("auth.createOneHere") : t("auth.signInHere")}
             </Link>
           </p>
         </div>
@@ -211,7 +213,7 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
           <div className="inline-flex w-fit items-center">
             <Image
               src="/logo/logo-green-white.svg"
-              alt="Cadence logo"
+              alt={t("auth.logoAlt")}
               width={136}
               height={30}
               className="h-[30px] w-auto object-contain"
@@ -221,12 +223,12 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
 
           <div className="space-y-3">
             <CardTitle className="text-[2rem] leading-tight sm:text-[2.15rem]">
-              {isLogin ? "Sign in to Cadence" : "Start your pronunciation profile"}
+              {isLogin ? t("auth.loginTitle") : t("auth.signupTitle")}
             </CardTitle>
             <CardDescription className="text-base">
               {isLogin
-                ? "Return to your saved rounds and next coaching cue."
-                : "Create your learner account and begin tracking progress."}
+                ? t("auth.loginDescription")
+                : t("auth.signupDescription")}
             </CardDescription>
           </div>
         </div>
@@ -241,7 +243,7 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
           onSubmit={handleSubmit}
         >
           <label className="block">
-            <span className="block pb-2 text-sm font-medium text-hunter-green">Email</span>
+            <span className="block pb-2 text-sm font-medium text-hunter-green">{t("auth.email")}</span>
             <Input
               type="email"
               autoComplete="email"
@@ -254,11 +256,11 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
           </label>
 
           <label className="block">
-            <span className="block pb-2 text-sm font-medium text-hunter-green">Password</span>
+            <span className="block pb-2 text-sm font-medium text-hunter-green">{t("auth.password")}</span>
             <Input
               type="password"
               autoComplete={isLogin ? "current-password" : "new-password"}
-              placeholder="At least 6 characters"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -282,29 +284,29 @@ export function AuthForm({ mode, runtime }: AuthFormProps) {
           <Button className="w-full" type="submit" disabled={isSubmitting}>
             {isSubmitting
               ? isLogin
-                ? "Signing in..."
-                : "Creating account..."
+                ? t("auth.signingIn")
+                : t("auth.creatingAccount")
               : isLogin
-                ? "Sign in"
-                : "Create account"}
+                ? t("auth.signIn")
+                : t("auth.createAccount")}
           </Button>
 
           {isLogin ? (
             <div className="pt-1 text-right">
               <Link href="/forgot-password" className="text-sm font-semibold text-sage-green">
-                Forgot password?
+                {t("auth.forgotPassword")}
               </Link>
             </div>
           ) : null}
         </form>
 
         <p className="px-5 text-sm leading-7 text-iron-grey sm:px-6">
-          {isLogin ? "Need an account?" : "Already have an account?"}{" "}
+          {isLogin ? t("auth.needAccount") : t("auth.alreadyHaveAccount")}{" "}
           <Link
             href={isLogin ? "/signup" : "/login"}
             className="font-semibold text-sage-green"
           >
-            {isLogin ? "Create one here." : "Sign in here."}
+            {isLogin ? t("auth.createOneHere") : t("auth.signInHere")}
           </Link>
         </p>
       </div>

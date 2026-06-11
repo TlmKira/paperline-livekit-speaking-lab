@@ -3,11 +3,12 @@
 import Image from "next/image";
 import { ArrowRight, Microphone } from "griddy-icons";
 import { useMemo, useState } from "react";
-import { PracticeStudio } from "@/components/audio/PracticeStudio";
+import { AliyunAssessmentStudio } from "@/components/audio/AliyunAssessmentStudio";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { useCoachVoice } from "@/hooks/useCoachVoice";
+import { useI18n } from "@/lib/i18n/client";
 import type { ModuleWithProgress } from "@/lib/learn";
 import {
   getPracticeTarget,
@@ -19,6 +20,7 @@ interface QuickPracticeHomeProps {
 }
 
 export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
+  const { t } = useI18n();
   const [selectedWord, setSelectedWord] = useState("think");
   const { instruct } = useCoachVoice();
 
@@ -44,43 +46,43 @@ export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-yellow-green">
               <Microphone size={18} filled color="currentColor" />
-              <span className="eyebrow text-sm">Home</span>
+              <span className="eyebrow text-sm">{t("dashboard.home")}</span>
             </div>
 
             <div className="space-y-3">
               <h1 className="text-3xl font-semibold text-bright-snow sm:text-4xl lg:text-5xl">
-                Quick practice
+                {t("dashboard.quickPractice")}
               </h1>
               <p className="max-w-2xl text-base leading-7 text-bright-snow/78">
-                Free drill mode for supported target words. Hear the reference
-                pronunciation, record one take, and let Cadence compare the
-                decoded phonemes against the target.
+                {t("dashboard.quickPracticeBody")}
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Modules complete</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("dashboard.modulesComplete")}</p>
                 <p className="mt-2 text-2xl font-semibold text-bright-snow">
                   {completedModules}/{modules.length || 10}
                 </p>
               </div>
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Unlocked now</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("dashboard.unlockedNow")}</p>
                 <p className="mt-2 text-2xl font-semibold text-bright-snow">
                   {unlockedModules}
                 </p>
               </div>
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Current module</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("dashboard.currentModule")}</p>
                 <p className="mt-2 text-base font-semibold text-bright-snow">
-                  {currentModule ? `Module ${currentModule.sort_order}` : "Ready"}
+                  {currentModule
+                    ? `${t("common.module")} ${currentModule.sort_order}`
+                    : t("common.ready")}
                 </p>
               </div>
             </div>
 
             <Button variant="secondary" href="/learn" className="w-fit">
-              Open modules
+              {t("dashboard.openModules")}
               <ArrowRight size={16} color="currentColor" />
             </Button>
           </div>
@@ -90,10 +92,10 @@ export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
           <div className="grid gap-5 md:grid-cols-[0.92fr_1.08fr] md:items-center">
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="eyebrow text-sm text-sage-green">Session cue</p>
+                <p className="eyebrow text-sm text-sage-green">{t("dashboard.sessionCue")}</p>
                 <label className="block space-y-2">
                   <span className="text-sm font-semibold text-hunter-green">
-                    Choose a target word
+                    {t("dashboard.chooseTargetWord")}
                   </span>
                   <Select
                     value={selectedWord}
@@ -120,9 +122,9 @@ export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
 
               {currentModule ? (
                 <p className="text-sm leading-7 text-iron-grey">
-                  Structured learning stays in Modules. Your current route is{" "}
+                  {t("dashboard.structuredLearningPrefix")}{" "}
                   <span className="font-semibold text-hunter-green">
-                    Module {currentModule.sort_order}: {currentModule.title}
+                    {t("common.module")} {currentModule.sort_order}: {currentModule.title}
                   </span>
                   .
                 </p>
@@ -132,7 +134,7 @@ export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
             <div className="flex items-center justify-center">
               <Image
                 src="/illustration/analysing-1.svg"
-                alt="Pronunciation practice illustration"
+                alt={t("dashboard.illustrationAlt")}
                 width={360}
                 height={280}
                 className="h-auto w-full max-w-xs object-contain"
@@ -143,7 +145,7 @@ export function QuickPracticeHome({ modules }: QuickPracticeHomeProps) {
         </Card>
       </section>
 
-      <PracticeStudio
+      <AliyunAssessmentStudio
         targetWord={currentTarget.label}
         targetPhonemes={currentTarget.ipa}
         instruct={instruct}

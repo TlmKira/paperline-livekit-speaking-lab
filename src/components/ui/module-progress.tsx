@@ -1,6 +1,7 @@
 // FILE: src/components/ui/module-progress.tsx
 import { cookies } from "next/headers";
 import { getAppSession } from "@/lib/app-session";
+import { getI18n } from "@/lib/i18n/server";
 import { getModuleProgressStatsForMode } from "@/lib/learn-data";
 import { getRequestRuntime } from "@/lib/runtime/request-runtime";
 import { ModuleProgressFrame } from "@/components/ui/module-progress-frame";
@@ -54,6 +55,7 @@ export async function ModuleProgress({
 }: { variant?: "default" | "dark" } = {}) {
   const session = await getAppSession();
   const runtime = await getRequestRuntime();
+  const { dictionary } = await getI18n();
 
   if (!session.mode || !session.user) return null;
 
@@ -80,7 +82,7 @@ export async function ModuleProgress({
   return (
     <ModuleProgressFrame runtime={runtime}>
       <ProgressBar
-        label="Module progress"
+        label={dictionary.progress.moduleProgress}
         countLabel={`${completedModules}/${Math.max(totalModules, 0)}`}
         percent={modulePercent}
         variant={variant}
@@ -89,7 +91,7 @@ export async function ModuleProgress({
         className={`hidden h-10 w-px rounded-full lg:block ${variant === "dark" ? "bg-white/20" : "bg-alabaster-grey"}`}
       />
       <ProgressBar
-        label="Overall progress"
+        label={dictionary.progress.overallProgress}
         countLabel={`${overallCompleted}/${overallTotal}`}
         percent={overallPercent}
         variant={variant}

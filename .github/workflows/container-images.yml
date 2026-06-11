@@ -1,0 +1,68 @@
+name: Container Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: web
+            context: .
+            dockerfile: Dockerfile
+          - service: ai-engine
+            context: src/backend/ai-engine
+            dockerfile: src/backend/ai-engine/Dockerfile
+          - service: coach-engine
+            context: src/backend/coach-engine
+            dockerfile: src/backend/coach-engine/Dockerfile
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321' }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy-local-key' }}
+            NEXT_PUBLIC_BRANDFETCH_CLIENT_ID=${{ vars.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID || 'dummy-local-client' }}
+            AI_ENGINE_URL=http://ai-engine:8000
+            AI_COACH_ENGINE_URL=http://coach-engine:8001
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY || 'sk_test_dummy_local_key' }}
+            STRIPE_PRICE_ID=${{ vars.STRIPE_PRICE_ID || 'price_dummy_local' }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET || 'whsec_dummy_local' }}

@@ -5,24 +5,27 @@ import { usePathname } from 'next/navigation'
 import { Settings } from 'griddy-icons'
 import { AiCoachSidebarHistory } from '@/components/coach/AiCoachSidebarHistory'
 import { BrandMark } from '@/components/ui/brand-mark'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useI18n } from '@/lib/i18n/client'
 import { cn } from '@/lib/utils'
-
-const navItems = [
-  { href: '/dashboard',    label: 'Home'         },
-  { href: '/learn',        label: 'Modules'      },
-  { href: '/conversation', label: 'Conversation' },
-  { href: '/coach',        label: 'AI Coach'     },
-]
-
-const exploreItems = [
-  { href: '/just-speak', label: 'Just Speak', isPro: true },
-  { href: '/sound-library', label: 'Sound Library' },
-  { href: '/dictionary', label: 'Dictionary' },
-  { href: '/bookmarks', label: 'Bookmarks' },
-]
 
 export function DesktopSidebar({ userId }: { userId?: string | null }) {
   const pathname = usePathname()
+  const { t } = useI18n()
+
+  const navItems = [
+    { href: '/dashboard',    label: t('nav.home')         },
+    { href: '/learn',        label: t('nav.modules')      },
+    { href: '/conversation', label: t('nav.conversation') },
+    { href: '/coach',        label: t('nav.aiCoach')      },
+  ]
+
+  const exploreItems = [
+    { href: '/just-speak', label: t('nav.justSpeak'), isPro: true },
+    { href: '/sound-library', label: t('nav.soundLibrary') },
+    { href: '/dictionary', label: t('nav.dictionary') },
+    { href: '/bookmarks', label: t('nav.bookmarks') },
+  ]
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
@@ -41,6 +44,7 @@ export function DesktopSidebar({ userId }: { userId?: string | null }) {
       {/* ── Logo ── */}
       <div className="px-5 pb-5">
         <BrandMark />
+        <LanguageSwitcher variant="sidebar" className="mt-4 w-fit" />
       </div>
 
       {/* ── Nav items ── */}
@@ -64,7 +68,7 @@ export function DesktopSidebar({ userId }: { userId?: string | null }) {
 
         <div className="mt-5 space-y-2">
           <p className="px-4 text-xs font-semibold tracking-[0.16em] text-sage-green/80 uppercase">
-            Explore
+            {t('nav.explore')}
           </p>
           <nav className="flex flex-col gap-0.5">
             {exploreItems.map((item) => (
@@ -81,7 +85,7 @@ export function DesktopSidebar({ userId }: { userId?: string | null }) {
                 <span>{item.label}</span>
                 {item.isPro ? (
                   <span className="rounded-full bg-hunter-green px-2 py-0.5 text-[10px] font-bold tracking-[0.14em] text-bright-snow uppercase">
-                    Pro
+                    {t('nav.pro')}
                   </span>
                 ) : null}
               </Link>
@@ -106,7 +110,7 @@ export function DesktopSidebar({ userId }: { userId?: string | null }) {
           )}
         >
           <Settings size={16} color="currentColor" />
-          Settings
+          {t('nav.settings')}
         </Link>
       </div>
     </aside>

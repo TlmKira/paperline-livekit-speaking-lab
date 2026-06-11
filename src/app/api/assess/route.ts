@@ -1,84 +1,48 @@
 // FILE: src/app/api/assess/route.ts
 import { NextResponse } from "next/server";
-import { getAiEngineUrlForRequest } from "@/lib/runtime/request-runtime";
+import {
+  AliyunSpeechError,
+  assessPronunciationWithAliyun,
+  getAliyunSpeechStatus,
+} from "@/lib/aliyun-speech";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
+export async function GET() {
+  const status = getAliyunSpeechStatus();
+  const ready = false;
+  const loadError = status.assessmentConfigured
+    ? "Aliyun speech assessment credentials are configured, but the server-side en.sent.score transport is not wired yet."
+    : "Aliyun speech assessment is not configured. Set ALIYUN_SPEECH_ASSESS_APPKEY, ALIYUN_SPEECH_ASSESS_ACCESS_KEY_ID, and ALIYUN_SPEECH_ASSESS_ACCESS_KEY_SECRET.";
 
-  try {
-    const response = await fetch(`${engineUrl}/health`, {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error("FastAPI health check failed.");
-    }
-
-    const payload = (await response.json()) as {
-      status?: string;
-      modelReady?: boolean;
-      transcriberReady?: boolean;
-      transcriberLoadError?: string | null;
-      loadError?: string | null;
-      hfTokenConfigured?: boolean;
-      diagnostics?: {
-        pythonExecutable?: string;
-        phonemizerImportable?: boolean;
-        phonemizerVersion?: string | null;
-        espeakPath?: string | null;
-        espeakNgPath?: string | null;
-      };
-    };
-
-    const reachable = response.ok;
-    const ready = payload.status === "ok" && payload.modelReady === true;
-    const warming = reachable && !ready;
-
-    return NextResponse.json(
-      {
-        ready,
-        warming,
-        reachable,
-        transcriberReady: payload.transcriberReady ?? false,
-        transcriberLoadError: payload.transcriberLoadError ?? null,
-        hfTokenConfigured: payload.hfTokenConfigured ?? false,
-        loadError: payload.loadError ?? null,
-        diagnostics: payload.diagnostics ?? null,
-        needsRestartHint:
-          typeof payload.loadError === "string" &&
-          payload.loadError.toLowerCase().includes("phonemizer"),
-        message: ready
-          ? "FastAPI engine is online and model inference is ready."
-          : payload.loadError
-            ? `FastAPI is reachable, but model loading failed: ${payload.loadError}`
-            : "FastAPI is reachable and the model is still warming up.",
+  return NextResponse.json(
+    {
+      ready,
+      warming: false,
+      reachable: status.dashscopeReady,
+      transcriberReady: status.dashscopeReady,
+      transcriberLoadError: status.dashscopeReady
+        ? null
+        : "DASHSCOPE_API_KEY is not configured.",
+      hfTokenConfigured: false,
+      diagnostics: {
+        provider: "aliyun",
+        asrModel: status.asrModel,
+        ttsModel: status.ttsModel,
+        ttsVoice: status.ttsVoice,
+        assessment: "en.sent.score",
       },
-      { status: ready ? 200 : 202 },
-    );
-  } catch {
-    return NextResponse.json(
-      {
-        ready: false,
-        warming: false,
-        reachable: false,
-        transcriberReady: false,
-        transcriberLoadError: "FastAPI transcription engine is not reachable.",
-        hfTokenConfigured: false,
-        diagnostics: null,
-        needsRestartHint: false,
-        loadError: "FastAPI engine is not reachable.",
-        message:
-          "Pronunciation scoring is offline. Make sure the local ai-engine service is healthy, then try again.",
-      },
-      { status: 503 },
-    );
-  }
+      needsRestartHint: false,
+      loadError,
+      message: ready
+        ? "Aliyun speech providers are configured."
+        : "Aliyun speech assessment is not ready. ASR and TTS use Aliyun directly; pronunciation scoring still needs the en.sent.score SDK transport.",
+    },
+    { status: ready ? 200 : 202 },
+  );
 }
 
 export async function POST(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
   const formData = await request.formData();
   const audio = formData.get("audio");
   const text = formData.get("text");
@@ -97,35 +61,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const upstreamFormData = new FormData();
-  upstreamFormData.set("audio", audio, audio.name || "attempt.wav");
-  upstreamFormData.set("text", text);
-
   try {
-    const response = await fetch(`${engineUrl}/assess`, {
-      method: "POST",
-      body: upstreamFormData,
-      cache: "no-store",
-    });
-
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const message =
-        payload && typeof payload === "object" && "detail" in payload
-          ? String(payload.detail)
-          : "FastAPI assessment failed.";
-
-      return NextResponse.json({ error: message }, { status: response.status });
+    return NextResponse.json(await assessPronunciationWithAliyun(audio, text.trim()));
+  } catch (error) {
+    if (error instanceof AliyunSpeechError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    return NextResponse.json(payload);
-  } catch {
     return NextResponse.json(
-        {
-          error:
-          "Pronunciation scoring is offline. Make sure the local ai-engine service is healthy, then try again.",
-        },
+      {
+        error: "Aliyun pronunciation assessment failed. Check the server logs and assessment configuration.",
+      },
       { status: 503 },
     );
   }

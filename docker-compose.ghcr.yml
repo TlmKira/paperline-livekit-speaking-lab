@@ -1,33 +1,22 @@
 services:
   web:
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/tlmkira/paperline-livekit-speaking-lab}/web:${GHCR_IMAGE_TAG:-latest}
     env_file:
       - .env.local
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set NEXT_PUBLIC_SUPABASE_URL in your env file}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in your env file}
-        NEXT_PUBLIC_BRANDFETCH_CLIENT_ID: ${NEXT_PUBLIC_BRANDFETCH_CLIENT_ID:?Set NEXT_PUBLIC_BRANDFETCH_CLIENT_ID in your env file}
-        AI_ENGINE_URL: http://ai-engine:8000
-        AI_COACH_ENGINE_URL: http://coach-engine:8001
-        STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-        STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
-        STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set NEXT_PUBLIC_SUPABASE_URL in your env file}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in your env file}
-      NEXT_PUBLIC_BRANDFETCH_CLIENT_ID: ${NEXT_PUBLIC_BRANDFETCH_CLIENT_ID:?Set NEXT_PUBLIC_BRANDFETCH_CLIENT_ID in your env file}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://127.0.0.1:54321}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-dummy-local-key}
+      NEXT_PUBLIC_BRANDFETCH_CLIENT_ID: ${NEXT_PUBLIC_BRANDFETCH_CLIENT_ID:-dummy-local-client}
       AI_ENGINE_URL: http://ai-engine:8000
       AI_COACH_ENGINE_URL: http://coach-engine:8001
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST}
-      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT}
-      BREVO_SMTP_USER: ${BREVO_SMTP_USER}
-      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD}
-      BREVO_API_KEY: ${BREVO_API_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_dummy_local_key}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-price_dummy_local}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_dummy_local}
+      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST:-}
+      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT:-}
+      BREVO_SMTP_USER: ${BREVO_SMTP_USER:-}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
     depends_on:
       ai-engine:
         condition: service_started
@@ -43,11 +32,9 @@ services:
       start_period: 30s
 
   ai-engine:
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/tlmkira/paperline-livekit-speaking-lab}/ai-engine:${GHCR_IMAGE_TAG:-latest}
     env_file:
       - .env.local
-    build:
-      context: ./src/backend/ai-engine
-      dockerfile: Dockerfile
     environment:
       AI_ENGINE_HOST: 0.0.0.0
       AI_ENGINE_PORT: 8000
@@ -67,11 +54,9 @@ services:
       start_period: 30s
 
   coach-engine:
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/tlmkira/paperline-livekit-speaking-lab}/coach-engine:${GHCR_IMAGE_TAG:-latest}
     env_file:
       - .env.local
-    build:
-      context: ./src/backend/coach-engine
-      dockerfile: Dockerfile
     environment:
       COACH_ENGINE_HOST: 0.0.0.0
       COACH_ENGINE_PORT: 8001

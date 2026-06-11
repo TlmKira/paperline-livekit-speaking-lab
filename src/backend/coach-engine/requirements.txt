@@ -1,7 +1,8 @@
 # FILE: src/coach-engine/requirements.txt
 fastapi
 uvicorn[standard]
-torch
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.12.0+cpu
 accelerate
 sentencepiece
-git+https://github.com/huggingface/transformers.git
+transformers==5.3.0

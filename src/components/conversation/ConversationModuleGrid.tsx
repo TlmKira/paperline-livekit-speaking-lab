@@ -6,6 +6,7 @@ import type { ConversationModuleWithProgress } from "@/lib/conversation";
 import { ConversationModuleCard } from "@/components/conversation/ConversationModuleCard";
 import { ProgressRing } from "@/components/learn/ProgressRing";
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/lib/i18n/client";
 
 interface ConversationModuleGridProps {
   modules: ConversationModuleWithProgress[];
@@ -14,6 +15,7 @@ interface ConversationModuleGridProps {
 export function ConversationModuleGrid({
   modules,
 }: ConversationModuleGridProps) {
+  const { t } = useI18n();
   const completed = modules.filter((module) => module.isCompleted).length;
   const unlocked = modules.filter((module) => module.isUnlocked).length;
   const completionRate = Math.round(
@@ -30,34 +32,32 @@ export function ConversationModuleGrid({
         <Card className="bg-hunter-green text-bright-snow">
           <div className="space-y-5">
             <div className="space-y-3">
-              <p className="eyebrow text-sm text-yellow-green/82">Track structure</p>
+              <p className="eyebrow text-sm text-yellow-green/82">{t("conversation.trackStructure")}</p>
               <h1 className="text-3xl font-semibold text-bright-snow sm:text-4xl lg:text-5xl">
-                Two tracks, one accent goal.
+                {t("conversation.title")}
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-bright-snow/78">
-                Sound modules sharpen individual phonemes. Conversation modules
-                move that control into realistic exchanges, where rhythm, word
-                choice, and response timing all matter together.
+                {t("conversation.body")}
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Conversation modules</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("conversation.conversationModules")}</p>
                 <p className="mt-2 text-2xl font-semibold text-bright-snow">
                   {completed}/{modules.length}
                 </p>
               </div>
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Unlocked now</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("conversation.unlockedNow")}</p>
                 <p className="mt-2 text-2xl font-semibold text-bright-snow">
                   {unlocked}
                 </p>
               </div>
               <div className="rounded-3xl bg-white/10 px-4 py-4">
-                <p className="eyebrow text-xs text-yellow-green/82">Pass standard</p>
+                <p className="eyebrow text-xs text-yellow-green/82">{t("conversation.passStandard")}</p>
                 <p className="mt-2 text-2xl font-semibold text-bright-snow">
-                  High
+                  {t("common.high")}
                 </p>
               </div>
             </div>
@@ -69,7 +69,7 @@ export function ConversationModuleGrid({
             <div className="flex items-center justify-center">
               <Image
                 src="/illustration/communication-1.svg"
-                alt="Conversation practice illustration"
+                alt={t("conversation.illustrationAlt")}
                 width={320}
                 height={260}
                 className="h-auto w-full max-w-[15rem] object-contain"
@@ -78,15 +78,15 @@ export function ConversationModuleGrid({
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="eyebrow text-sm text-sage-green">Current route</p>
+                <p className="eyebrow text-sm text-sage-green">{t("conversation.currentRoute")}</p>
                 <h2 className="text-3xl font-semibold text-hunter-green">
                   {currentModule
                     ? `${currentModule.title}`
-                    : "Start with the first conversation module"}
+                    : t("conversation.startFirst")}
                 </h2>
                 <p className="text-sm leading-7 text-iron-grey">
                   {currentModule?.scenario ??
-                    "Each conversation module runs like a guided chat with scored spoken replies."}
+                    t("conversation.fallbackScenario")}
                 </p>
               </div>
 
@@ -94,20 +94,18 @@ export function ConversationModuleGrid({
                 <ProgressRing score={completionRate} size={80} strokeWidth={7} className="shrink-0" />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-hunter-green">
-                    {completed} conversation modules passed
+                    {completed} {t("conversation.passed")}
                   </p>
                   <p className="text-sm leading-6 text-iron-grey">
-                    Move from controlled exchanges into more demanding professional
-                    conversation.
+                    {t("conversation.routeBody")}
                   </p>
                 </div>
               </div>
 
               <div className="rounded-3xl bg-vanilla-cream px-4 py-4">
-                <p className="eyebrow text-xs text-sage-green">Format</p>
+                <p className="eyebrow text-xs text-sage-green">{t("conversation.format")}</p>
                 <p className="mt-2 text-sm leading-6 text-iron-grey">
-                  The coach speaks first, you reply with a target phrase, and
-                  Cadence scores pronunciation quality before the next turn.
+                  {t("conversation.formatBody")}
                 </p>
               </div>
             </div>

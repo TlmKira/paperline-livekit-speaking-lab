@@ -1,9 +1,12 @@
 // FILE: src/app/layout.tsx
 import type { Metadata } from "next";
-import { Funnel_Display, Sour_Gummy } from "next/font/google";
+import { Funnel_Display, Sour_Gummy, ZCOOL_KuaiLe } from "next/font/google";
 import "./globals.css";
 import "lenis/dist/lenis.css";
 import { AppShell } from "@/components/ui/app-shell";
+import { I18nProvider } from "@/lib/i18n/client";
+import { getI18n } from "@/lib/i18n/server";
+import { localeToHtmlLang } from "@/lib/i18n/locales";
 import { getRequestRuntime } from "@/lib/runtime/request-runtime";
 
 const funnelDisplay = Funnel_Display({
@@ -18,6 +21,13 @@ const sourGummy = Sour_Gummy({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-sour-gummy",
+});
+
+const zcoolKuaiLe = ZCOOL_KuaiLe({
+  weight: "400",
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-zh-kicker",
 });
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -80,13 +90,21 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const runtime = await getRequestRuntime();
+  const { locale, dictionary } = await getI18n();
 
   return (
-    <html lang="en" className={`${funnelDisplay.variable} ${sourGummy.variable}`} suppressHydrationWarning>
+    <html
+      lang={localeToHtmlLang(locale)}
+      data-locale={locale}
+      className={`${funnelDisplay.variable} ${sourGummy.variable} ${zcoolKuaiLe.variable}`}
+      suppressHydrationWarning
+    >
       <body
         className={`${funnelDisplay.className} min-h-screen bg-vanilla-cream`}
       >
-        <AppShell runtime={runtime}>{children}</AppShell>
+        <I18nProvider locale={locale} dictionary={dictionary}>
+          <AppShell runtime={runtime}>{children}</AppShell>
+        </I18nProvider>
       </body>
     </html>
   );

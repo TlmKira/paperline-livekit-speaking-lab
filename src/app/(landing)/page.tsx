@@ -1,5 +1,6 @@
 // FILE: src/app/page.tsx
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import Image from "next/image";
 import { Activity, Microphone, PlayCircle } from "griddy-icons";
 import { Navbar } from "@/components/ui/navbar";
@@ -10,68 +11,68 @@ import { FaqSection } from "@/components/ui/faq-section";
 import { PricingSection } from "@/components/ui/pricing-section";
 import { SplitText } from "@/components/ui/split-text";
 import { TrustedByStrip } from "@/components/ui/trusted-by-strip";
+import { getI18n } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Speak English Clearly. Sound Confident. Get Understood.",
-  description:
-    "Most tools give you a score. Cadence shows you exactly which sound is off — then hands you back to the microphone with a clear cue to fix it. Hosted plans for learners, plus an open-source path to run locally.",
-  openGraph: {
-    title: "Cadence — Speak English Clearly. Sound Confident. Get Understood.",
-    description:
-      "Most tools give you a score. Cadence shows you exactly which sound is off — with hosted plans for learners and an open-source local path.",
-  },
-};
+export const dynamic = "force-dynamic";
 
-const processCards = [
-  {
-    title: "Speak naturally",
-    description:
-      "Talk the way you normally would — full sentences, real words. Short focused rounds keep the practice loop tight enough to fit into any day.",
-    icon: Microphone,
-  },
-  {
-    title: "See exactly which sound is off",
-    description:
-      "Cadence analyzes how you speak and compares it to the target — surfacing the precise sound that’s pulling your pronunciation off.",
-    icon: Activity,
-  },
-  {
-    title: "Fix it and try again",
-    description:
-      "Every result names the next thing to focus on. Feedback never ends at a score — it hands you straight back to the microphone with a clear target.",
-    icon: PlayCircle,
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const { dictionary } = await getI18n();
 
-const moduleCards = [
-  {
-    title: "Guided modules",
-    description:
-      "A structured sequence that moves from foundational sounds into harder pronunciation patterns — one clear win at a time.",
-  },
-  {
-    title: "B1–C1 conversation practice",
-    description:
-      "Ten leveled speaking scenarios — from coffee chat introductions to client check-in calls — so your practice lands in real dialogue, not isolated drills.",
-  },
-  {
-    title: "Daily reminders",
-    description:
-      "Short nudges that bring you back before the practice streak breaks — not a notification flood, just the right tap at the right moment.",
-  },
-  {
-    title: "Progress and levels",
-    description:
-      "Visible milestones, level-ups, and per-sound mastery so the improvement is something you can actually see and hear.",
-  },
-  {
-    title: "Streak system",
-    description:
-      "A lightweight consistency layer that rewards repeated practice without turning the app into noise.",
-  },
-];
+  return {
+    title: dictionary.landing.metaTitle,
+    description: dictionary.landing.metaDescription,
+    openGraph: {
+      title: `Cadence — ${dictionary.landing.metaTitle}`,
+      description: dictionary.landing.metaDescription,
+    },
+  };
+}
 
-export default function Home() {
+export default async function Home() {
+  await connection();
+  const { dictionary } = await getI18n();
+  const copy = dictionary.landing;
+  const processCards = [
+    {
+      title: copy.process.speakTitle,
+      description: copy.process.speakBody,
+      icon: Microphone,
+    },
+    {
+      title: copy.process.soundTitle,
+      description: copy.process.soundBody,
+      icon: Activity,
+    },
+    {
+      title: copy.process.retryTitle,
+      description: copy.process.retryBody,
+      icon: PlayCircle,
+    },
+  ];
+  const moduleCards = [
+    {
+      title: copy.modules.guidedTitle,
+      description: copy.modules.guidedBody,
+    },
+    {
+      title: copy.modules.conversationTitle,
+      description: copy.modules.conversationBody,
+    },
+    {
+      title: copy.modules.remindersTitle,
+      description: copy.modules.remindersBody,
+    },
+    {
+      title: copy.modules.progressTitle,
+      description: copy.modules.progressBody,
+    },
+    {
+      title: copy.modules.streakTitle,
+      description: copy.modules.streakBody,
+    },
+  ];
+
   return (
     <main className="min-h-screen px-5 py-5 sm:px-8 lg:px-12">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
@@ -83,31 +84,28 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-yellow-green">
                   <Activity size={18} filled color="currentColor" />
-                  <span className="eyebrow text-sm">Real conversations · Precise feedback · Open source</span>
+                  <span className="eyebrow text-sm">{copy.heroEyebrow}</span>
                 </div>
                 <div className="space-y-3">
                   <SplitText
-                    text="Most tools tell you what you said. Cadence tells you what to fix."
+                    text={copy.heroTitle}
                     tag="h1"
                     delay={22}
                     duration={760}
                     className="max-w-3xl text-balance text-4xl font-semibold leading-tight sm:text-5xl"
                   />
                   <p className="max-w-2xl text-base leading-8 text-white/78 sm:text-lg">
-                    Speak naturally. Cadence listens, finds the exact sound
-                    you&apos;re getting wrong, and gives you a clear cue to fix
-                    it before your next try. No vague scores. No generic
-                    transcripts. Just the specific sound that needs work.
+                    {copy.heroBody}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <Button href="/dashboard" className="bg-sage-green text-white hover:bg-[#7aa65f]">
-                  Try the practice studio
+                  {copy.tryStudio}
                 </Button>
                 <Button variant="secondary" href="/signup">
-                  Create an account
+                  {copy.createAccount}
                 </Button>
               </div>
             </div>
@@ -117,17 +115,17 @@ export default function Home() {
             <div className="flex h-full flex-col gap-4 px-6 py-6 sm:px-8 sm:py-8">
               <div className="space-y-2">
                 <p className="eyebrow text-sm text-sage-green">
-                  Practice studio
+                  {copy.studioEyebrow}
                 </p>
                 <h2 className="font-kicker text-2xl font-semibold text-hunter-green">
-                  Record, compare, and see the gap — all in one view.
+                  {copy.studioTitle}
                 </h2>
               </div>
 
               <div className="flex flex-1 items-center justify-center">
                 <Image
                   src="/illustration/communication-1.svg"
-                  alt="People communicating"
+                  alt={copy.peopleAlt}
                   width={520}
                   height={380}
                   className="h-auto w-full max-w-md translate-y-12 object-contain sm:translate-y-14"
@@ -168,7 +166,7 @@ export default function Home() {
                 <div className="flex items-center justify-center">
                   <Image
                     src="/illustration/progress-1.svg"
-                    alt="Progress illustration"
+                    alt={copy.progressAlt}
                     width={420}
                     height={280}
                     className="h-auto w-full max-w-xs object-contain"
@@ -176,15 +174,13 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                   <p className="eyebrow text-sm text-sage-green">
-                    Built for consistency
+                    {copy.consistencyEyebrow}
                   </p>
                   <h2 className="text-3xl font-semibold text-hunter-green">
-                    Five minutes a day beats one long session a week.
+                    {copy.consistencyTitle}
                   </h2>
                   <p className="text-base leading-8 text-iron-grey">
-                    Cadence is built around a loop short enough to close before
-                    your coffee gets cold: speak, see what&apos;s off, get the
-                    cue, go again. That tightness is the product.
+                    {copy.consistencyBody}
                   </p>
                 </div>
               </div>
@@ -192,29 +188,25 @@ export default function Home() {
 
             <Card className="bg-hunter-green text-white">
               <p className="eyebrow text-sm text-yellow-green/80">
-                Not another transcript
+                {copy.transcriptEyebrow}
               </p>
               <p className="mt-4 text-2xl font-semibold">
-                A score doesn&apos;t tell you which sound to fix. Cadence does.
+                {copy.transcriptTitle}
               </p>
               <p className="mt-3 text-sm leading-7 text-white/78">
-                Voice apps transcribe what you said. Duolingo logs your streak.
-                Neither tells you which specific sound is pulling your
-                pronunciation off. That gap is exactly what Cadence fills.
+                {copy.transcriptBody}
               </p>
             </Card>
 
             <Card className="bg-white">
               <p className="eyebrow text-sm text-sage-green">
-                Who it&apos;s for
+                {copy.audienceEyebrow}
               </p>
               <p className="mt-4 text-2xl font-semibold text-hunter-green">
-                Non-native speakers who want to be understood, not just assessed.
+                {copy.audienceTitle}
               </p>
               <p className="mt-3 text-sm leading-7 text-iron-grey">
-                Solo learners building a daily habit. Professionals preparing
-                for interviews and clearer workplace communication. Language
-                learners who&apos;ve studied for years but still feel misunderstood.
+                {copy.audienceBody}
               </p>
             </Card>
           </div>
@@ -228,16 +220,13 @@ export default function Home() {
           <Card className="bg-hunter-green text-white">
             <div className="space-y-4">
               <p className="eyebrow text-sm text-yellow-green/80">
-                What&apos;s being built
+                {copy.roadmapEyebrow}
               </p>
               <h2 className="max-w-2xl text-3xl font-semibold leading-tight">
-                Pronunciation practice is the foundation. The platform goes further.
+                {copy.roadmapTitle}
               </h2>
               <p className="max-w-2xl text-sm leading-8 text-white/78">
-                Cadence is growing into a full pronunciation curriculum: guided
-                modules from B1 to C1, AI conversation practice in real-world
-                scenarios, daily streaks, progress checkpoints, and dedicated
-                flows for students, tutors, and organizations.
+                {copy.roadmapBody}
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {moduleCards.map((module) => (
@@ -261,23 +250,20 @@ export default function Home() {
             <div className="flex h-full flex-col gap-4 px-6 py-6">
               <div className="space-y-2">
                 <p className="eyebrow text-sm text-sage-green">
-                  Hosted + open source
+                  {copy.hostedEyebrow}
                 </p>
                 <h2 className="text-2xl font-semibold text-hunter-green">
-                  Subscribe for hosted access, or run Cadence locally.
+                  {copy.hostedTitle}
                 </h2>
                 <p className="text-sm leading-7 text-iron-grey">
-                  Choose the hosted plan if you want the full product
-                  experience with a 7-day trial, or take the open-source route
-                  to run Cadence locally and contribute in public. The roadmap
-                  stays transparent even as the hosted product grows.
+                  {copy.hostedBody}
                 </p>
               </div>
 
               <div className="flex flex-1 items-center justify-center">
                 <Image
                   src="/illustration/following-your-dreams-1.svg"
-                  alt="Growth illustration"
+                  alt={copy.growthAlt}
                   width={430}
                   height={340}
                   className="h-auto w-full max-w-sm object-contain"

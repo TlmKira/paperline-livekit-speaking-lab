@@ -1,11 +1,13 @@
 // FILE: src/app/api/transcribe/route.ts
 import { NextResponse } from "next/server";
-import { getAiEngineUrlForRequest } from "@/lib/runtime/request-runtime";
+import {
+  AliyunSpeechError,
+  transcribeWithAliyunOmni,
+} from "@/lib/aliyun-speech";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const engineUrl = getAiEngineUrlForRequest(request);
   const formData = await request.formData();
   const audio = formData.get("audio");
 
@@ -16,34 +18,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const upstreamFormData = new FormData();
-  upstreamFormData.set("audio", audio, audio.name || "attempt.wav");
-
   try {
-    const response = await fetch(`${engineUrl}/transcribe`, {
-      method: "POST",
-      body: upstreamFormData,
-      cache: "no-store",
-    });
-
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const message =
-        payload && typeof payload === "object" && "detail" in payload
-          ? String(payload.detail)
-          : "FastAPI transcription failed.";
-
-      return NextResponse.json({ error: message }, { status: response.status });
+    return NextResponse.json(await transcribeWithAliyunOmni(audio));
+  } catch (error) {
+    if (error instanceof AliyunSpeechError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    return NextResponse.json(payload);
-  } catch {
     return NextResponse.json(
-        {
-          error:
-          "Transcription is offline. Make sure the local ai-engine service is healthy, then try again.",
-        },
+      {
+        error: "Aliyun transcription failed. Check the server logs and DashScope configuration.",
+      },
       { status: 503 },
     );
   }

@@ -8,41 +8,38 @@ import {
   CursorProvider,
 } from "@/components/animate-ui/components/animate/cursor";
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
-const faqItems = [
-  {
-    question: "What exactly does Cadence score?",
-    answer:
-      "Cadence focuses on word-level pronunciation quality by decoding phonemes and comparing them with the target word you asked the learner to say.",
-  },
-  {
-    question: "Does it work for short daily practice?",
-    answer:
-      "Yes. The product is built around short, repeatable rounds so learners can improve one sound at a time instead of sitting through long drills.",
-  },
-  {
-    question: "Is there a trial or a local open-source option?",
-    answer:
-      "Yes. The monthly and yearly hosted plans both start with a 7-day free trial, and the codebase stays available for anyone who wants to run Cadence locally.",
-  },
-  {
-    question: "Why use phoneme feedback instead of a plain transcript?",
-    answer:
-      "A transcript can hide accent issues that are still understandable. Phoneme comparison is better for showing where a sound is close, but still not correct.",
-  },
-];
-
 export function FaqSection() {
+  const { t } = useI18n();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const faqItems = [
+    {
+      question: t("faq.items.scoreQuestion"),
+      answer: t("faq.items.scoreAnswer"),
+    },
+    {
+      question: t("faq.items.dailyQuestion"),
+      answer: t("faq.items.dailyAnswer"),
+    },
+    {
+      question: t("faq.items.trialQuestion"),
+      answer: t("faq.items.trialAnswer"),
+    },
+    {
+      question: t("faq.items.phonemeQuestion"),
+      answer: t("faq.items.phonemeAnswer"),
+    },
+  ];
 
   return (
     <section className="grid gap-3 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch">
       <Card className="h-full bg-white">
         <div className="flex h-full flex-col space-y-2">
-          <p className="eyebrow text-sm text-sage-green">FAQ</p>
+          <p className="eyebrow text-sm text-sage-green">{t("faq.eyebrow")}</p>
           <h2 className="max-w-md text-3xl font-semibold text-hunter-green">
-            Questions people ask before they commit to daily practice.
+            {t("faq.title")}
           </h2>
         </div>
       </Card>
@@ -60,7 +57,7 @@ export function FaqSection() {
                 align="center"
                 className="bg-hunter-green text-white"
               >
-                {isOpen ? "Close answer" : "Open answer"}
+                {isOpen ? t("faq.closeAnswer") : t("faq.openAnswer")}
               </CursorFollow>
               <button
                 type="button"
@@ -110,7 +107,7 @@ export function FaqSection() {
                           : "bg-bright-snow text-iron-grey",
                       )}
                     >
-                      {isOpen ? "Close" : "Open"}
+                      {isOpen ? t("faq.close") : t("faq.open")}
                     </div>
                   </div>
 

@@ -2,11 +2,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n/client";
 import type { AppMode } from "@/lib/app-mode";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function SignOutButton({ mode }: { mode: AppMode }) {
   const router = useRouter();
+  const { t } = useI18n();
 
   async function handleSignOut() {
     if (mode === "local") {
@@ -33,7 +35,7 @@ export function SignOutButton({ mode }: { mode: AppMode }) {
       onClick={() => void handleSignOut()}
       className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full bg-hunter-green px-4 py-2.5 text-sm font-semibold text-white whitespace-nowrap hover:bg-[#44784f]"
     >
-      {mode === "local" ? "Exit local mode" : "Sign out"}
+      {mode === "local" ? t("profile.exitLocalMode") : t("profile.signOut")}
     </button>
   );
 }

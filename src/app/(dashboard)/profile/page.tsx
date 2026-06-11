@@ -9,25 +9,12 @@ import { ProfileCoachVoice } from "@/components/audio/ProfileCoachVoice";
 import { ProfileDesktopRuntime } from "@/components/desktop/profile-desktop-runtime";
 import { CancelSubscriptionButton } from "@/components/auth/CancelSubscriptionButton";
 import { requireAppUser } from "@/lib/app-session";
+import { getI18n } from "@/lib/i18n/server";
 import { getRequestRuntime } from "@/lib/runtime/request-runtime";
 
 export const metadata: Metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
-};
-
-const focusLabel: Record<string, string> = {
-  conversations: "Conversation confidence",
-  vowels:        "Short and long vowel control",
-  work:          "Clearer speaking at work",
-  daily:         "Daily speaking fluency",
-};
-
-const cadenceLabel: Record<string, string> = {
-  "5-minutes":    "5 min / day",
-  "15-minutes":   "15 min / day",
-  "30-minutes":   "30 min / day",
-  "weekend-only": "Few times a week",
 };
 
 function trialDaysLeft(trialEnd: string | undefined): number | null {
@@ -39,6 +26,7 @@ function trialDaysLeft(trialEnd: string | undefined): number | null {
 export default async function ProfilePage() {
   const session = await requireAppUser("/profile");
   const runtime = await getRequestRuntime();
+  const { locale, dictionary } = await getI18n();
   const isDesktop = runtime === "desktop";
   const meta = session.user.meta;
   const isLocal = session.mode === "local";
@@ -59,11 +47,12 @@ export default async function ProfilePage() {
     ? null
     : (meta.stripe_cancel_at as string | null | undefined);
 
-  const memberSince = new Date(session.user.createdAt).toLocaleDateString("en-US", {
+  const dateLocale = locale === "zh" ? "zh-CN" : "en-US";
+  const memberSince = new Date(session.user.createdAt).toLocaleDateString(dateLocale, {
     month: "long", day: "numeric", year: "numeric",
   });
   const trialEndFormatted = trialEnd
-    ? new Date(trialEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? new Date(trialEnd).toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })
     : null;
 
   return (
@@ -78,7 +67,7 @@ export default async function ProfilePage() {
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 rounded-full bg-vanilla-cream px-4 py-2 text-hunter-green">
                 <UserCircle size={18} color="currentColor" />
-                <span className="eyebrow text-sm">Settings</span>
+                <span className="eyebrow text-sm">{dictionary.profile.settings}</span>
               </div>
 
               <div className="space-y-2">
@@ -88,35 +77,35 @@ export default async function ProfilePage() {
                 {session.user.email ? (
                   <p className="text-base text-iron-grey">{session.user.email}</p>
                 ) : (
-                  <p className="text-base text-iron-grey">Local profile only</p>
+                  <p className="text-base text-iron-grey">{dictionary.profile.localProfileOnly}</p>
                 )}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-3xl bg-vanilla-cream px-4 py-4">
-                  <p className="eyebrow text-xs text-sage-green">Plan</p>
+                  <p className="eyebrow text-xs text-sage-green">{dictionary.profile.plan}</p>
                   <p className="mt-2 text-base font-semibold text-hunter-green">
-                    {isLocal ? "Local mode" : "Cadence Cloud"}
+                    {isLocal ? dictionary.common.localMode : dictionary.common.cadenceCloud}
                   </p>
                 </div>
                 <div className="rounded-3xl bg-vanilla-cream px-4 py-4">
-                  <p className="eyebrow text-xs text-sage-green">Status</p>
+                  <p className="eyebrow text-xs text-sage-green">{dictionary.profile.status}</p>
                   <p className="mt-2 text-base font-semibold text-hunter-green">
                     {isLocal
-                      ? "Stored on this machine"
+                      ? dictionary.profile.storedLocal
                       : isTrialing
-                        ? "Trial"
+                        ? dictionary.profile.trial
                         : isActive
-                          ? "Active"
+                          ? dictionary.profile.active
                           : (subStatus ?? "—")}
                   </p>
                 </div>
                 <div className="rounded-3xl bg-vanilla-cream px-4 py-4">
                   <p className="eyebrow text-xs text-sage-green">
-                    {isTrialing && daysLeft !== null ? "Days left" : "Member since"}
+                    {isTrialing && daysLeft !== null ? dictionary.profile.daysLeft : dictionary.profile.memberSince}
                   </p>
                   <p className="mt-2 text-base font-semibold text-hunter-green">
-                    {isTrialing && daysLeft !== null ? `${daysLeft} days` : memberSince}
+                    {isTrialing && daysLeft !== null ? `${daysLeft}` : memberSince}
                   </p>
                 </div>
               </div>
@@ -132,16 +121,16 @@ export default async function ProfilePage() {
                 <div className="flex items-center justify-between gap-6">
                   <div className="space-y-1">
                     <p className="eyebrow text-xs text-sage-green">
-                      {isTrialing ? "Free trial active" : "Subscription active"}
+                      {isTrialing ? dictionary.profile.freeTrialActive : dictionary.profile.subscriptionActive}
                     </p>
                     <p className="text-2xl font-semibold text-hunter-green">
                       {isTrialing && daysLeft !== null
-                        ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left on your trial`
-                        : "You're on Cadence Pro"}
+                        ? `${daysLeft} ${daysLeft === 1 ? dictionary.profile.dayLeft : dictionary.profile.daysLeftTrial}`
+                        : dictionary.profile.proPlan}
                     </p>
                     {isTrialing && trialEndFormatted && (
                       <p className="text-sm leading-6 text-iron-grey">
-                        Charged $14.99/mo on {trialEndFormatted}. Cancel any time.
+                        {dictionary.profile.chargedPrefix} {trialEndFormatted} {dictionary.profile.chargedSuffix}
                       </p>
                     )}
                   </div>
@@ -160,32 +149,32 @@ export default async function ProfilePage() {
             <Card className="bg-white flex-1">
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <p className="eyebrow text-sm text-sage-green">Practice setup</p>
-                  <h2 className="text-2xl font-semibold text-hunter-green">Your preferences</h2>
+                  <p className="eyebrow text-sm text-sage-green">{dictionary.profile.practiceSetup}</p>
+                  <h2 className="text-2xl font-semibold text-hunter-green">{dictionary.profile.preferences}</h2>
                 </div>
 
                 <div className="space-y-3">
                   <div className="rounded-3xl bg-vanilla-cream px-5 py-4">
-                    <p className="text-xs text-iron-grey">Focus area</p>
+                    <p className="text-xs text-iron-grey">{dictionary.profile.focusArea}</p>
                     <p className="mt-1 text-base font-semibold text-hunter-green">
-                      {focusLabel[practiceFocus ?? ""] ?? "Not set"}
+                      {dictionary.profile.focus[practiceFocus as keyof typeof dictionary.profile.focus] ?? dictionary.common.notSet}
                     </p>
                   </div>
                   <div className="rounded-3xl bg-vanilla-cream px-5 py-4">
-                    <p className="text-xs text-iron-grey">Daily cadence</p>
+                    <p className="text-xs text-iron-grey">{dictionary.profile.dailyCadence}</p>
                     <p className="mt-1 text-base font-semibold text-hunter-green">
-                      {cadenceLabel[practiceCadence ?? ""] ?? "Not set"}
+                      {dictionary.profile.cadence[practiceCadence as keyof typeof dictionary.profile.cadence] ?? dictionary.common.notSet}
                     </p>
                   </div>
                   <div className="rounded-3xl bg-vanilla-cream px-5 py-4">
-                    <p className="text-xs text-iron-grey">Member since</p>
+                    <p className="text-xs text-iron-grey">{dictionary.profile.memberSince}</p>
                     <p className="mt-1 text-base font-semibold text-hunter-green">{memberSince}</p>
                   </div>
                   {isLocal ? (
                     <div className="rounded-3xl bg-vanilla-cream px-5 py-4">
-                      <p className="text-xs text-iron-grey">Storage</p>
+                      <p className="text-xs text-iron-grey">{dictionary.profile.storage}</p>
                       <p className="mt-1 text-base font-semibold text-hunter-green">
-                        Local only
+                        {dictionary.profile.localOnly}
                       </p>
                     </div>
                   ) : null}
