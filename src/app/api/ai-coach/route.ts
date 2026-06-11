@@ -1,64 +1,30 @@
 // FILE: src/app/api/ai-coach/route.ts
 import { NextResponse } from "next/server";
-import {
-  AliyunAiError,
-  generateCoachTurnWithAliyun,
-  isAliyunAiConfigured,
-} from "@/lib/aliyun-ai";
 import type { AiCoachRequestPayload } from "@/lib/ai-coach";
-import { getCoachEngineUrlForRequest } from "@/lib/runtime/request-runtime";
+import { AliyunAiError } from "@/lib/aliyun-ai";
+import {
+  generateCoachTurnWithAliyunTeacher,
+  isAliyunAiTeacherConfigured,
+} from "@/lib/aliyun-ai-teacher";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  if (isAliyunAiConfigured()) {
-    return NextResponse.json({
-      ready: true,
-      message: "AI Coach (Aliyun) is ready.",
-    });
-  }
-
-  const coachEngineUrl = getCoachEngineUrlForRequest(request);
-
-  try {
-    const response = await fetch(`${coachEngineUrl}/coach-status`, {
-      cache: "no-store",
-    });
-
-    const payload = (await response.json().catch(() => null)) as
-      | {
-          ready?: boolean;
-          message?: string;
-        }
-      | null;
-
-    if (!response.ok) {
-      return NextResponse.json(
-        {
-          ready: false,
-          message: payload?.message ?? "AI Coach is unavailable right now.",
-        },
-        { status: response.status },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        ready: payload?.ready === true,
-        message: payload?.message ?? "AI Coach is ready.",
-      },
-      { status: 200 },
-    );
-  } catch {
+export async function GET() {
+  if (!isAliyunAiTeacherConfigured()) {
     return NextResponse.json(
       {
         ready: false,
         message:
-          "AI Coach is offline. Set DASHSCOPE_API_KEY for Aliyun cloud AI, or start the coach-engine service.",
+          "AI Teacher is unavailable. Configure ALIYUN_ACCESS_KEY_ID and ALIYUN_ACCESS_KEY_SECRET.",
       },
       { status: 503 },
     );
   }
+
+  return NextResponse.json({
+    ready: true,
+    message: "AI Teacher (Aliyun) is ready.",
+  });
 }
 
 export async function POST(request: Request) {
@@ -78,79 +44,39 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const action = body.action === "continue" ? "continue" : "start";
+
+  if (!isAliyunAiTeacherConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "AI Teacher is unavailable. Configure ALIYUN_ACCESS_KEY_ID and ALIYUN_ACCESS_KEY_SECRET.",
+      },
+      { status: 503 },
+    );
+  }
+
   const payload: AiCoachRequestPayload = {
-    action,
+    action: body.action === "continue" ? "continue" : "start",
     topic: body.topic,
     mode: body.mode === "freedom" ? "freedom" : "target",
     history: Array.isArray(body.history) ? body.history : [],
   };
 
-  if (isAliyunAiConfigured()) {
-    try {
-      const turn = await generateCoachTurnWithAliyun(payload);
-      return NextResponse.json(
-        {
-          turn,
-          provider: "aliyun",
-        },
-        { status: 200 },
-      );
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Aliyun coach generation failed.";
-      return NextResponse.json(
-        { error: message },
-        { status: err instanceof AliyunAiError ? err.status : 502 },
-      );
-    }
-  }
-
-  const coachEngineUrl = getCoachEngineUrlForRequest(request);
-
   try {
-    const response = await fetch(`${coachEngineUrl}/coach-turn`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const detail =
-        result && typeof result === "object" && "detail" in result
-          ? String(result.detail)
-          : "AI Coach generation failed.";
-
-      return NextResponse.json(
-        {
-          error: detail,
-        },
-        { status: response.status },
-      );
-    }
-
+    const turn = await generateCoachTurnWithAliyunTeacher(payload);
     return NextResponse.json(
       {
-        turn:
-          result && typeof result === "object" && "turn" in result
-            ? result.turn
-            : null,
-        provider: "local-coach",
+        turn,
+        provider: "aliyun-ai-teacher",
       },
       { status: 200 },
     );
-  } catch {
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Aliyun AI Teacher generation failed.";
     return NextResponse.json(
-      {
-        error:
-          "AI Coach is offline. Set DASHSCOPE_API_KEY for Aliyun cloud AI, or start the coach-engine service.",
-      },
-      { status: 503 },
+      { error: message },
+      { status: err instanceof AliyunAiError ? err.status : 502 },
     );
   }
 }

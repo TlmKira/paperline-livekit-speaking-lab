@@ -5,6 +5,7 @@ import { startTransition, useCallback, useEffect, useRef, useState } from "react
 import { useRouter } from "next/navigation";
 import type { Lesson, LessonWord } from "@/lib/learn";
 import type { PronunciationAssessment } from "@/lib/pronunciation";
+import { assessBlobWithAliyunSdk } from "@/lib/aliyun-assessment-sdk";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { AssessmentResult } from "@/components/learn/AssessmentResult";
 import { ExamResult } from "@/components/learn/ExamResult";
@@ -143,18 +144,12 @@ export function ExamLesson({
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.set("audio", blob, `${currentWord.word}-exam.wav`);
-      formData.set("text", currentWord.word);
-
-      const response = await fetch("/api/assess", { method: "POST", body: formData });
-      const payload = (await response.json()) as PronunciationAssessment | { error?: string };
-
-      if (!response.ok || ("error" in payload && payload.error)) {
-        throw new Error("error" in payload ? payload.error : "Assessment failed.");
-      }
-
-      const result = payload as PronunciationAssessment;
+      const result = await assessBlobWithAliyunSdk({
+        audio: blob,
+        targetText: currentWord.word,
+        ipaTarget: currentWord.ipa,
+        fileName: `${currentWord.word}-exam.wav`,
+      });
       setAssessment(result);
       setPhase("result");
 

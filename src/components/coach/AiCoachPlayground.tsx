@@ -23,6 +23,7 @@ import {
   readSavedAiCoachSessions,
   writeSavedAiCoachSessions,
 } from "@/lib/ai-coach-storage";
+import { assessBlobWithAliyunSdk } from "@/lib/aliyun-assessment-sdk";
 import type { PronunciationAssessment } from "@/lib/pronunciation";
 import { cn } from "@/lib/utils";
 
@@ -550,22 +551,12 @@ export function AiCoachPlayground({
         let freedomAssessment: PronunciationAssessment | null = null;
 
         if (nextTranscript.trim()) {
-          const assessmentFormData = new FormData();
-          assessmentFormData.set("audio", blob, `${currentTurn.id}.wav`);
-          assessmentFormData.set("text", nextTranscript);
-
-          const assessmentResponse = await fetch("/api/assess", {
-            method: "POST",
-            body: assessmentFormData,
+          freedomAssessment = await assessBlobWithAliyunSdk({
+            audio: blob,
+            targetText: nextTranscript,
+            ipaTarget: nextTranscript,
+            fileName: `${currentTurn.id}.wav`,
           });
-          const assessmentPayload = (await assessmentResponse.json().catch(() => null)) as
-            | PronunciationAssessment
-            | { error?: string }
-            | null;
-
-          if (assessmentResponse.ok && assessmentPayload && !("error" in assessmentPayload)) {
-            freedomAssessment = assessmentPayload as PronunciationAssessment;
-          }
         }
 
         setTurns((previous) =>
@@ -576,26 +567,17 @@ export function AiCoachPlayground({
           ),
         );
       } else {
-        const formData = new FormData();
-        formData.set("audio", blob, `${currentTurn.id}.wav`);
-        formData.set("text", currentTurn.learnerReply);
-
-        const response = await fetch("/api/assess", { method: "POST", body: formData });
-        const payload = (await response.json().catch(() => null)) as
-          | PronunciationAssessment
-          | { error?: string }
-          | null;
-
-        if (!response.ok || !payload || "error" in payload) {
-          throw new Error(
-            payload && "error" in payload ? payload.error : "Pronunciation assessment failed.",
-          );
-        }
+        const result = await assessBlobWithAliyunSdk({
+          audio: blob,
+          targetText: currentTurn.learnerReply,
+          ipaTarget: currentTurn.learnerReply,
+          fileName: `${currentTurn.id}.wav`,
+        });
 
         setTurns((previous) =>
           previous.map((turn, index) =>
             index === previous.length - 1
-              ? { ...turn, assessment: payload as PronunciationAssessment, freeTranscript: null, replyAudioUrl }
+              ? { ...turn, assessment: result, freeTranscript: null, replyAudioUrl }
               : turn,
           ),
         );

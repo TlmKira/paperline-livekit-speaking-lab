@@ -7,6 +7,7 @@ import { Activity, Microphone, Play, Square } from "griddy-icons";
 import { AssessmentResult } from "@/components/learn/AssessmentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import type { EngineEvaluatInstance } from "@/lib/aliyun-assessment-sdk";
 import type {
   PronunciationAssessment,
   PronunciationHighlight,
@@ -51,26 +52,6 @@ type EngineResult = {
     rhythm?: { overall?: number };
   };
 };
-
-type EngineEvaluatInstance = {
-  startRecord: (
-    params: Record<string, unknown>,
-    done?: (msg: unknown) => void,
-    fail?: (msg: unknown) => void,
-  ) => void;
-  stopRecord: () => void;
-  cancelRecord?: () => void;
-  destroyEngine?: () => void;
-  setMicVolume?: (volume: number) => void;
-};
-
-type EngineEvaluatConstructor = new (params: Record<string, unknown>) => EngineEvaluatInstance;
-
-declare global {
-  interface Window {
-    EngineEvaluat?: EngineEvaluatConstructor;
-  }
-}
 
 function getDefaultEvalTime(text: string) {
   return Math.min(12000, 2600 + text.trim().split(/\s+/).filter(Boolean).length * 700);
@@ -357,6 +338,10 @@ export function AliyunAssessmentStudio({
 
       engineRef.current = engine;
       engine.setMicVolume?.(1.5);
+      if (!engine.startRecord) {
+        throw new Error("Aliyun assessment SDK does not support live recording.");
+      }
+
       engine.startRecord(
         {
           coreType: "en.sent.score",
@@ -387,7 +372,7 @@ export function AliyunAssessmentStudio({
   function handleStop() {
     if (phase !== "recording") return;
     setPhase("assessing");
-    engineRef.current?.stopRecord();
+    engineRef.current?.stopRecord?.();
   }
 
   function handleRetry() {

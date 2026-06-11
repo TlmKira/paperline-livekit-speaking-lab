@@ -186,8 +186,8 @@ export function getAliyunSpeechStatus() {
   const dashscopeReady = Boolean(process.env.DASHSCOPE_API_KEY?.trim());
   const assessmentConfigured = Boolean(
     process.env.ALIYUN_SPEECH_ASSESS_APPKEY?.trim() &&
-      process.env.ALIYUN_SPEECH_ASSESS_ACCESS_KEY_ID?.trim() &&
-      process.env.ALIYUN_SPEECH_ASSESS_ACCESS_KEY_SECRET?.trim(),
+      process.env.ALIYUN_SPEECH_ASSESS_APPID?.trim() &&
+      process.env.ALIYUN_SPEECH_ASSESS_APPSECRET?.trim(),
   );
 
   return {

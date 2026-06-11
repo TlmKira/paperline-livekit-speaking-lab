@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "desktop/dist/**",
     "desktop/packages/**",
+    "public/sdk/**",
   ]),
 ]);
 

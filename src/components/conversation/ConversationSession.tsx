@@ -11,6 +11,8 @@ import { ConversationFlowCard } from "@/components/conversation/ConversationFlow
 import { ConversationSidePanel } from "@/components/conversation/ConversationSidePanel";
 import { Card } from "@/components/ui/card";
 import { useCoachVoice } from "@/hooks/useCoachVoice";
+import { assessBlobWithAliyunSdk } from "@/lib/aliyun-assessment-sdk";
+import type { AiCoachGeneratedTurn, AiCoachHistoryEntry } from "@/lib/ai-coach";
 import { playLearnerRecordingSegment } from "@/lib/audio-feedback";
 
 export type Phase = "intro" | "coach" | "recording" | "assessing" | "result" | "done";
@@ -36,6 +38,7 @@ export function ConversationSession({
 }: ConversationSessionProps) {
   const router = useRouter();
   const { instruct } = useCoachVoice();
+  const [aiTurns, setAiTurns] = useState(module.turns);
   const [turnIndex, setTurnIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("intro");
   const [assessment, setAssessment] = useState<PronunciationAssessment | null>(null);
@@ -57,7 +60,7 @@ export function ConversationSession({
   const replyWordStopRef = useRef<(() => void) | null>(null);
   const replyAudioUrlsRef = useRef<Set<string>>(new Set());
 
-  const currentTurn = module.turns[Math.min(turnIndex, module.turns.length - 1)];
+  const currentTurn = aiTurns[Math.min(turnIndex, aiTurns.length - 1)];
   const hasStarted = phase !== "intro" && phase !== "done";
 
   useEffect(() => {
@@ -114,8 +117,8 @@ export function ConversationSession({
 
   const visibleTurns = useMemo(() => {
     if (!hasStarted) return [];
-    return module.turns.slice(0, Math.min(turnIndex + 1, module.turns.length));
-  }, [hasStarted, module.turns, turnIndex]);
+    return aiTurns.slice(0, Math.min(turnIndex + 1, aiTurns.length));
+  }, [aiTurns, hasStarted, turnIndex]);
 
   function stopCoachAudio() {
     const currentAudio = coachAudioRef.current;
@@ -329,11 +332,78 @@ export function ConversationSession({
     setCoachPlaybackRequest((value) => value + 1);
   }
 
-  function handleStartConversation() {
+  function replaceAiTurn(index: number, turn: AiCoachGeneratedTurn) {
+    setAiTurns((previous) =>
+      previous.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              coachMessage: turn.coachMessage,
+              expectedResponse: turn.learnerReply || item.expectedResponse,
+            }
+          : item,
+      ),
+    );
+  }
+
+  function buildConversationHistory(nextResponses: TurnResponse[]): AiCoachHistoryEntry[] {
+    return nextResponses.flatMap((response, index) => {
+      const turn = aiTurns[index];
+      const entries: AiCoachHistoryEntry[] = [];
+      if (turn?.coachMessage) {
+        entries.push({ role: "coach", content: turn.coachMessage });
+      }
+      entries.push({
+        role: "user",
+        content: response.transcript || response.targetText,
+        score: response.score,
+        transcript: response.transcript,
+      });
+      return entries;
+    });
+  }
+
+  async function requestAiConversationTurn(
+    action: "start" | "continue",
+    nextTurnIndex: number,
+    nextResponses: TurnResponse[],
+  ) {
+    const response = await fetch("/api/ai-coach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        topic: `${module.title}. ${module.summary}`,
+        mode: "target",
+        history: action === "start" ? [] : buildConversationHistory(nextResponses),
+      }),
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { turn?: AiCoachGeneratedTurn; error?: string }
+      | null;
+
+    if (!response.ok || !payload?.turn) {
+      throw new Error(payload?.error ?? "AI Teacher could not generate the next conversation turn.");
+    }
+
+    replaceAiTurn(nextTurnIndex, payload.turn);
+  }
+
+  async function handleStartConversation() {
     setResponses([]);
     setScores([]);
     setFinalScore(0);
-    queueCoachTurn(0);
+    setError(null);
+    setPhase("assessing");
+
+    try {
+      await requestAiConversationTurn("start", 0, []);
+      queueCoachTurn(0);
+    } catch (nextError) {
+      setPhase("intro");
+      setError(nextError instanceof Error ? nextError.message : "AI Teacher could not start the conversation.");
+    }
   }
 
   async function runAssessment(blob: Blob) {
@@ -346,18 +416,14 @@ export function ConversationSession({
       registerReplyAudioUrl(nextReplyAudioUrl);
       setPendingReplyAudioUrl(nextReplyAudioUrl);
 
-      const formData = new FormData();
-      formData.set("audio", blob, `${currentTurn.id}.wav`);
-      formData.set("text", currentTurn.expectedResponse);
+      const result = await assessBlobWithAliyunSdk({
+        audio: blob,
+        targetText: currentTurn.expectedResponse,
+        ipaTarget: currentTurn.expectedResponse,
+        fileName: `${currentTurn.id}.wav`,
+      });
 
-      const response = await fetch("/api/assess", { method: "POST", body: formData });
-      const payload = (await response.json()) as PronunciationAssessment | { error?: string };
-
-      if (!response.ok || ("error" in payload && payload.error)) {
-        throw new Error("error" in payload ? payload.error : "Assessment failed.");
-      }
-
-      setAssessment(payload as PronunciationAssessment);
+      setAssessment(result);
       setPhase("result");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Assessment failed.");
@@ -395,7 +461,7 @@ export function ConversationSession({
     setAssessment(null);
     setError(null);
 
-    if (turnIndex + 1 >= module.turns.length) {
+    if (turnIndex + 1 >= aiTurns.length) {
       const average = Math.round(
         nextScores.reduce((sum, score) => sum + score, 0) / nextScores.length,
       );
@@ -414,7 +480,19 @@ export function ConversationSession({
       return;
     }
 
-    queueCoachTurn(turnIndex + 1);
+    const nextTurnIndex = turnIndex + 1;
+    setPhase("assessing");
+    try {
+      await requestAiConversationTurn("continue", nextTurnIndex, nextResponses);
+      queueCoachTurn(nextTurnIndex);
+    } catch (nextError) {
+      setResponses(responses);
+      setScores(scores);
+      setPendingReplyAudioUrl(pendingReplyAudioUrl);
+      setAssessment(assessment);
+      setError(nextError instanceof Error ? nextError.message : "AI Teacher could not continue the conversation.");
+      setPhase("result");
+    }
   }
 
   function handleRetryModule() {
@@ -423,6 +501,7 @@ export function ConversationSession({
     stopReplyAudio();
     setTurnIndex(0);
     setPhase("intro");
+    setAiTurns(module.turns);
     setAssessment(null);
     setResponses([]);
     setScores([]);
@@ -458,7 +537,7 @@ export function ConversationSession({
           visibleTurns={visibleTurns}
           responses={responses}
           turnIndex={turnIndex}
-          moduleLength={module.turns.length}
+          moduleLength={aiTurns.length}
           currentTurn={currentTurn}
           activeCoachTurnId={activeCoachTurnId}
           activeReplyTurnId={activeReplyTurnId}
@@ -467,7 +546,7 @@ export function ConversationSession({
           error={error}
           hasStarted={hasStarted}
           instruct={instruct}
-          onStartConversation={handleStartConversation}
+          onStartConversation={() => void handleStartConversation()}
           onPlayCoachMessage={(turn, unlockOnEnd) => void playCoachMessageForTurn(turn, unlockOnEnd)}
           onContinueToReply={() => { setCoachAudioError(null); setPhase("recording"); }}
           onPlayReplyAudio={(turnId, audioUrl) => void playReplyAudio(turnId, audioUrl)}
@@ -490,7 +569,7 @@ export function ConversationSession({
           assessment={assessment}
           phase={phase}
           turnIndex={turnIndex}
-          moduleLength={module.turns.length}
+          moduleLength={aiTurns.length}
           replyAudioUrl={pendingReplyAudioUrl}
           onRetry={handleRetryTurn}
           onNext={() => void handleNextTurn()}

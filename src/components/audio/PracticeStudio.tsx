@@ -5,6 +5,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Activity } from "griddy-icons";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { assessBlobWithAliyunSdk } from "@/lib/aliyun-assessment-sdk";
 import { createCorrectAudio, createIncorrectAudio } from "@/lib/audio-feedback";
 import {
   type PronunciationAssessment,
@@ -141,28 +142,12 @@ export function PracticeStudio({
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.set("audio", blob, `${targetWord.toLowerCase()}-attempt.wav`);
-      formData.set("text", targetWord);
-
-      const response = await fetch("/api/assess", {
-        method: "POST",
-        body: formData,
+      const result = await assessBlobWithAliyunSdk({
+        audio: blob,
+        targetText: targetWord,
+        ipaTarget: targetPhonemes,
+        fileName: `${targetWord.toLowerCase()}-attempt.wav`,
       });
-
-      const payload = (await response.json()) as
-        | PronunciationAssessment
-        | { error?: string };
-
-      if (!response.ok || ("error" in payload && typeof payload.error === "string")) {
-        throw new Error(
-          "error" in payload && payload.error
-            ? payload.error
-            : "Pronunciation assessment failed.",
-        );
-      }
-
-      const result = payload as PronunciationAssessment;
       setAssessment(result);
       setEngineReady(true);
       onAssessmentComplete?.(result);
