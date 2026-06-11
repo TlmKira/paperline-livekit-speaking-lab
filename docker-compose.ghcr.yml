@@ -43,6 +43,7 @@ services:
       CADENCE_LOG_LEVEL: ${CADENCE_LOG_LEVEL:-INFO}
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
+      - ./src/backend/data:/data:ro
       - hf-cache:/models/huggingface
     expose:
       - "8000"
